@@ -63,10 +63,19 @@
 #define SQLITE_FLUSH_MAX	(1048576)	/* (1024*1024) */
 #define AUL_POLL_CNT		15
 #define AUL_PR_NAME			16
-#define PATH_APP_ROOT "/opt/usr/apps"
+#define PATH_TMP "/tmp"
 #define PATH_DATA "/data"
+
 #define SDK_CODE_COVERAGE "CODE_COVERAGE"
+#define SDK_DEBUG "DEBUG"
 #define SDK_DYNAMIC_ANALYSIS "DYNAMIC_ANALYSIS"
+#define SDK_UNIT_TEST "UNIT_TEST"
+
+/* DLP is short for debug-launchpad */
+#define DLP_K_DEBUG_ARG "__DLP_DEBUG_ARG__"
+#define DLP_K_UNIT_TEST_ARG "__DLP_UNIT_TEST_ARG__"
+
+#define PATH_GDBSERVER "/home/developer/sdk_tools/gdbserver/gdbserver"
 #define PATH_DA_SO "/usr/lib/da_probe_osp.so"
 
 
@@ -80,7 +89,7 @@ _static_ int __prepare_exec(const char *pkg_name,
 			    const char *app_path, app_info_from_db * menu_info,
 			    bundle * kb);
 _static_ int __fake_launch_app(int cmd, int pid, bundle * kb);
-_static_ char **__create_argc_argv(bundle * kb, int *margc);
+_static_ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path);
 _static_ int __normal_fork_exec(int argc, char **argv);
 _static_ void __real_launch(const char *app_path, bundle * kb);
 static inline int __parser(const char *arg, char *out, int out_size);
@@ -117,6 +126,7 @@ _static_ void __set_oom()
 }
 
 _static_ void __set_sdk_env(app_info_from_db* menu_info, char* str) {
+	char buf_pkgname[MAX_LOCAL_BUFSZ];
 	char buf[MAX_LOCAL_BUFSZ];
 	int ret;
 
@@ -127,10 +137,11 @@ _static_ void __set_sdk_env(app_info_from_db* menu_info, char* str) {
 	/* GCOV_PREFIX_STRIP indicates the how many initial directory names */
 	/*		to stripoff the hardwired absolute paths. Default value is 0. */
 	if (strncmp(str, SDK_CODE_COVERAGE, strlen(str)) == 0) {
-		snprintf(buf, MAX_LOCAL_BUFSZ, PATH_APP_ROOT"/%s"PATH_DATA, _get_pkgname(menu_info));
+		strncpy(buf_pkgname,_get_pkgname(menu_info),MAX_LOCAL_BUFSZ);
+		snprintf(buf, MAX_LOCAL_BUFSZ, PATH_TMP"/%s"PATH_DATA, strtok(buf_pkgname,"."));
 		ret = setenv("GCOV_PREFIX", buf, 1);
 		_D("GCOV_PREFIX : %d", ret);
-		ret = setenv("GCOV_PREFIX_STRIP", "4096", 1);
+		ret = setenv("GCOV_PREFIX_STRIP", "0", 1);
 		_D("GCOV_PREFIX_STRIP : %d", ret);
 	} else if (strncmp(str, SDK_DYNAMIC_ANALYSIS, strlen(str)) == 0) {
 		ret = setenv("LD_PRELOAD", PATH_DA_SO, 1);
@@ -234,12 +245,81 @@ _static_ int __fake_launch_app(int cmd, int pid, bundle * kb)
 	return ret;
 }
 
-_static_ char **__create_argc_argv(bundle * kb, int *margc)
+_static_ char **__add_arg(bundle * kb, char **argv, int *margc, const char *key)
+{
+	const char *str = NULL;
+	const char **str_array = NULL;
+	int len = 0;
+	int i;
+
+	if(bundle_get_type(kb, key) & BUNDLE_TYPE_ARRAY) {
+		str_array = bundle_get_str_array(kb, key, &len);
+	} else {
+		str = bundle_get_val(kb, key);
+		if(str) {
+			str_array = &str;
+			len = 1;
+		}
+	}
+	if(str_array != NULL) {
+		if(strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0) {
+			argv = (char **) realloc(argv, sizeof(char *) * (*margc+len+2));
+			if(!argv) _E("realloc fail");
+			for(i=*margc+len+1; i-(len+1)>=0; i--) {
+				argv[i] = argv[i-(len+1)];
+			}
+			argv[0] = strdup(PATH_GDBSERVER);
+			for(i=0; i<len; i++) {
+				argv[1+i] = strdup(str_array[i]);
+			}
+			len++;	/* gdbserver */
+		} else {
+			argv = (char **) realloc(argv, sizeof(char *) * (*margc+len+1));
+			if(!argv) _E("realloc fail");
+			for(i=0; i<len; i++) {
+				argv[*margc+i] = strdup(str_array[i]);
+			}
+		}
+		argv[*margc+len] = NULL;
+		*margc += len;
+	}
+
+	return argv;
+}
+
+_static_ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path)
 {
 	char **argv;
 	int argc;
 
+	const char *str = NULL;
+	const char **str_array = NULL;
+	int len = 0;
+	int i;
+
 	argc = bundle_export_to_argv(kb, &argv);
+	argv[0] = strdup(app_path);
+
+	if(bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
+		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
+	} else {
+		str = bundle_get_val(kb, AUL_K_SDK);
+		if(str) {
+			str_array = &str;
+			len = 1;
+		}
+	}
+	if(str_array != NULL) {
+		for (i = 0; i < len; i++) {
+			if(str_array[i] == NULL) break;
+			_D("index : [%d]", i);
+			if (strncmp(str_array[i], SDK_DEBUG, strlen(str_array[i])) == 0) {
+				argv = __add_arg(kb, argv, &argc, DLP_K_DEBUG_ARG);
+			} else if (strncmp(str_array[i], SDK_UNIT_TEST, strlen(str_array[i])) == 0) {
+				argv = __add_arg(kb, argv, &argc, DLP_K_UNIT_TEST_ARG);
+			}
+		}
+	}
 
 	*margc = argc;
 	return argv;
@@ -265,10 +345,8 @@ _static_ void __real_launch(const char *app_path, bundle * kb)
 	int app_argc;
 	char **app_argv;
 	int i;
-	const char *str;
 
-	app_argv = __create_argc_argv(kb, &app_argc);
-	app_argv[0] = strdup(app_path);
+	app_argv = __create_argc_argv(kb, &app_argc, app_path);
 
 	for (i = 0; i < app_argc; i++)
 		_D("input argument %d : %s##", i, app_argv[i]);
@@ -278,11 +356,6 @@ _static_ void __real_launch(const char *app_path, bundle * kb)
 
 	/* Temporary log: launch time checking */
 	LOG(LOG_DEBUG, "LAUNCH", "[%s:Platform:launchpad:done]", app_path);
-
-	str = bundle_get_val(kb, AUL_K_SDK);
-	if ( !(str && strncmp(str, SDK_DYNAMIC_ANALYSIS, strlen(str))==0) ) {
-		__preload_exec(app_argc, app_argv);
-	}	
 
 	__normal_fork_exec(app_argc, app_argv);
 }
