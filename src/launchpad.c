@@ -798,15 +798,21 @@ _static_ void __launchpad_main_loop(int main_fd)
 			for (i = 0; i < len; i++) {
 				if(str_array[i] == NULL) break;
 				if (strncmp(str_array[i], SDK_DEBUG, strlen(str_array[i])) == 0) {
-					const char *pkgid;
+					const char *appid;
 					char cmd[MAX_LOCAL_BUFSZ];
 					char pkgname[MAX_LOCAL_BUFSZ];
 					strncpy(pkgname,_get_pkgname(menu_info),MAX_LOCAL_BUFSZ-1);
 					pkgname[MAX_LOCAL_BUFSZ-1]='\0';
-					if( strlen(pkgname)<=(APPID_LEN+1) ) break;
-					pkgid = strtok(pkgname,".");
-					if( strlen(pkgid)!=APPID_LEN ) break;
-					snprintf(cmd, MAX_LOCAL_BUFSZ, "echo \"sdbd %s w\" |smackload", pkgid);
+					if( strlen(pkgname)<=(APPID_LEN+1) ) {
+						_E("This isn't valid native app package name. pkgname : %s", pkgname);
+						goto end;
+					}
+					appid = strtok(pkgname,".");
+					if( strlen(appid)!=APPID_LEN ) {
+						_E("This isn't valid native app package name. pkgname : %s", _get_pkgname(menu_info));
+						goto end;
+					}
+					snprintf(cmd, MAX_LOCAL_BUFSZ, "echo \"sdbd %s w\" |smackload", appid);
 					system(cmd);
 				}
 			}
