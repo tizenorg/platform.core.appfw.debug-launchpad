@@ -63,6 +63,7 @@
 #define SQLITE_FLUSH_MAX	(1048576)	/* (1024*1024) */
 #define AUL_POLL_CNT		15
 #define AUL_PR_NAME			16
+#define APPID_LEN	10
 #define PATH_TMP "/tmp"
 #define PATH_DATA "/data"
 
@@ -137,7 +138,8 @@ _static_ void __set_sdk_env(app_info_from_db* menu_info, char* str) {
 	/* GCOV_PREFIX_STRIP indicates the how many initial directory names */
 	/*		to stripoff the hardwired absolute paths. Default value is 0. */
 	if (strncmp(str, SDK_CODE_COVERAGE, strlen(str)) == 0) {
-		strncpy(buf_pkgname,_get_pkgname(menu_info),MAX_LOCAL_BUFSZ);
+		strncpy(buf_pkgname,_get_pkgname(menu_info),MAX_LOCAL_BUFSZ-1);
+		buf_pkgname[MAX_LOCAL_BUFSZ-1]='\0';
 		snprintf(buf, MAX_LOCAL_BUFSZ, PATH_TMP"/%s"PATH_DATA, strtok(buf_pkgname,"."));
 		ret = setenv("GCOV_PREFIX", buf, 1);
 		_D("GCOV_PREFIX : %d", ret);
@@ -264,7 +266,10 @@ _static_ char **__add_arg(bundle * kb, char **argv, int *margc, const char *key)
 	if(str_array != NULL) {
 		if(strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0) {
 			argv = (char **) realloc(argv, sizeof(char *) * (*margc+len+2));
-			if(!argv) _E("realloc fail");
+			if(!argv) {
+				_E("realloc fail (key = %s)", key);
+				exit(-1);
+			}
 			for(i=*margc+len+1; i-(len+1)>=0; i--) {
 				argv[i] = argv[i-(len+1)];
 			}
@@ -275,7 +280,10 @@ _static_ char **__add_arg(bundle * kb, char **argv, int *margc, const char *key)
 			len++;	/* gdbserver */
 		} else {
 			argv = (char **) realloc(argv, sizeof(char *) * (*margc+len+1));
-			if(!argv) _E("realloc fail");
+			if(!argv) {
+				_E("realloc fail (key = %s)", key);
+				exit(-1);
+			}
 			for(i=0; i<len; i++) {
 				argv[*margc+i] = strdup(str_array[i]);
 			}
@@ -297,8 +305,11 @@ _static_ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path
 	int len = 0;
 	int i;
 
+	char buf[MAX_LOCAL_BUFSZ];
+
 	argc = bundle_export_to_argv(kb, &argv);
-	argv[0] = strdup(app_path);
+	sprintf(buf,"%s.exe",app_path);
+	argv[0] = strdup(buf);
 
 	if(bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
@@ -330,13 +341,14 @@ _static_ int __normal_fork_exec(int argc, char **argv)
 	_D("start real fork and exec\n");
 
 	if (execv(argv[0], argv) < 0) {	/* Flawfinder: ignore */
-		if (errno == EACCES)
+		if (errno == EACCES) {
 			_E("such a file is no executable - %s", argv[0]);
-		else
+		} else {
 			_E("unknown executable error - %s", argv[0]);
+		}
 		return -1;
 	}
-	/* never reach*/
+	/* never reach */
 	return 0;
 }
 
@@ -358,6 +370,11 @@ _static_ void __real_launch(const char *app_path, bundle * kb)
 	LOG(LOG_DEBUG, "LAUNCH", "[%s:Platform:launchpad:done]", app_path);
 
 	__normal_fork_exec(app_argc, app_argv);
+
+	for(i=0; i<app_argc; i++) {
+		if(app_argv[i]) free(app_argv[i]);
+	}
+	free(app_argv);
 }
 
 
@@ -763,6 +780,38 @@ _static_ void __launchpad_main_loop(int main_fd)
 	PERF("get package information & modify bundle done");
 
 	{
+		const char *str = NULL;
+		const char **str_array = NULL;
+		int len = 0;
+
+		if(bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
+			str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
+		} else {
+			str = bundle_get_val(kb, AUL_K_SDK);
+			if(str) {
+				str_array = &str;
+				len = 1;
+			}
+		}
+		if(str_array != NULL) {
+			int i;
+			for (i = 0; i < len; i++) {
+				if(str_array[i] == NULL) break;
+				if (strncmp(str_array[i], SDK_DEBUG, strlen(str_array[i])) == 0) {
+					const char *pkgid;
+					char cmd[MAX_LOCAL_BUFSZ];
+					char pkgname[MAX_LOCAL_BUFSZ];
+					strncpy(pkgname,_get_pkgname(menu_info),MAX_LOCAL_BUFSZ-1);
+					pkgname[MAX_LOCAL_BUFSZ-1]='\0';
+					if( strlen(pkgname)<=(APPID_LEN+1) ) break;
+					pkgid = strtok(pkgname,".");
+					if( strlen(pkgid)!=APPID_LEN ) break;
+					snprintf(cmd, MAX_LOCAL_BUFSZ, "echo \"sdbd %s w\" |smackload", pkgid);
+					system(cmd);
+				}
+			}
+		}
+
 		pid = fork();
 		if (pid == 0) {
 			PERF("fork done");
