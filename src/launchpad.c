@@ -57,6 +57,7 @@
 #include "gl.h"
 
 #include <sqlite3.h>
+#include <sys/smack.h>
 
 #define _static_ static inline
 #define POLLFD_MAX 1
@@ -78,7 +79,7 @@
 
 #define PATH_GDBSERVER "/home/developer/sdk_tools/gdbserver/gdbserver"
 #define PATH_DA_SO "/usr/lib/da_probe_osp.so"
-
+#define PATH_NATIVE_APP "/opt/apps/"
 
 static char *launchpad_cmdline;
 static int initialized = 0;
@@ -725,6 +726,62 @@ static app_info_from_db *_get_app_info_from_bundle_by_pkgname(
 	return menu_info;
 }
 
+/**
+ * free after use it
+ */
+int get_native_appid(const char* app_path, char** appid) {
+	int rc = smack_lgetlabel(app_path, appid, SMACK_LABEL_ACCESS);
+
+	if (rc != 0 || *appid == NULL) {
+		_E("smack_lgetlabel fail");
+		return -1;
+	}
+
+	if (strlen(*appid)!=APPID_LEN) {
+		_E("wrong native appid : %s", *appid);
+		return -1;
+	}
+
+	if (strlen(app_path)<sizeof(PATH_NATIVE_APP)+APPID_LEN-1) {
+		_E("wrong native app_path : %s", app_path);
+		return -1;
+	} else if (strncmp(app_path,PATH_NATIVE_APP,sizeof(PATH_NATIVE_APP)-1)
+		|| strncmp(&app_path[sizeof(PATH_NATIVE_APP)-1],*appid,APPID_LEN)) {
+		_E("wrong native app_path : %s", app_path);
+		return -1;
+	}
+	
+	_D("get_appid return : %s", *appid);
+	return 0;
+}
+
+int apply_smack_rules(const char* subject, const char* object, const char* access_type) {
+	struct smack_accesses *rules = NULL;
+
+	_D("apply_smack_rules : %s %s %s", subject, object, access_type);
+
+	if (smack_accesses_new(&rules)) {
+		_E("smack_accesses_new fail");
+		return -1;
+	}
+
+	if (smack_accesses_add(rules, subject, object, access_type)) {
+		smack_accesses_free(rules);
+		_E("smack_accesses_add fail");
+		return -1;
+	}
+
+	if (smack_accesses_apply(rules)) {
+		smack_accesses_free(rules);
+		_E("smack_accesses_apply fail");
+		return -1;
+	}
+
+	smack_accesses_free(rules);
+
+	return 0;
+}
+
 _static_ void __launchpad_main_loop(int main_fd)
 {
 	bundle *kb = NULL;
@@ -798,22 +855,18 @@ _static_ void __launchpad_main_loop(int main_fd)
 			for (i = 0; i < len; i++) {
 				if(str_array[i] == NULL) break;
 				if (strncmp(str_array[i], SDK_DEBUG, strlen(str_array[i])) == 0) {
-					const char *appid;
-					char cmd[MAX_LOCAL_BUFSZ];
-					char pkgname[MAX_LOCAL_BUFSZ];
-					strncpy(pkgname,_get_pkgname(menu_info),MAX_LOCAL_BUFSZ-1);
-					pkgname[MAX_LOCAL_BUFSZ-1]='\0';
-					if( strlen(pkgname)<=(APPID_LEN+1) ) {
-						_E("This isn't valid native app package name. pkgname : %s", pkgname);
+					char * appid = NULL;
+					int rc = get_native_appid(app_path,&appid);
+					if(rc!=0 || appid==NULL) {
+						_E("unable to get native appid");
+						if(appid) free(appid);
+						goto end;
+					}else if(apply_smack_rules("sdbd",appid,"w")) {
+						_E("unable to set sdbd rules");
+						if(appid) free(appid);
 						goto end;
 					}
-					appid = strtok(pkgname,".");
-					if( strlen(appid)!=APPID_LEN ) {
-						_E("This isn't valid native app package name. pkgname : %s", _get_pkgname(menu_info));
-						goto end;
-					}
-					snprintf(cmd, MAX_LOCAL_BUFSZ, "echo \"sdbd %s w\" |smackload", appid);
-					system(cmd);
+					if(appid) free(appid);
 				}
 			}
 		}
