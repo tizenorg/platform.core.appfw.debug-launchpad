@@ -62,6 +62,7 @@ SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 # launchpad(old avatar) daemon
 SET(AVATAR_NAME "debug_launchpad_preloading_preinitializing_daemon")
 add_executable(${AVATAR_NAME}
+	src/fileutils.c
 	src/app_sock.c
 	src/simple_util.c
 	src/launchpad.c

@@ -58,6 +58,7 @@
 
 #include <sqlite3.h>
 #include <sys/smack.h>
+#include "fileutils.h"
 
 #define _static_ static inline
 #define POLLFD_MAX 1
@@ -72,12 +73,15 @@
 #define SDK_DEBUG "DEBUG"
 #define SDK_DYNAMIC_ANALYSIS "DYNAMIC_ANALYSIS"
 #define SDK_UNIT_TEST "UNIT_TEST"
+#define SDK_VALGRIND "VALGRIND"
 
 /* DLP is short for debug-launchpad */
 #define DLP_K_DEBUG_ARG "__DLP_DEBUG_ARG__"
 #define DLP_K_UNIT_TEST_ARG "__DLP_UNIT_TEST_ARG__"
+#define DLP_K_VALGRIND_ARG "__DLP_VALGRIND_ARG__"
 
 #define PATH_GDBSERVER "/home/developer/sdk_tools/gdbserver/gdbserver"
+#define PATH_VALGRIND "/home/developer/sdk_tools/valgrind/usr/bin/valgrind"
 #define PATH_DA_SO "/usr/lib/da_probe_osp.so"
 #define PATH_NATIVE_APP "/opt/apps/"
 
@@ -85,34 +89,31 @@ static char *launchpad_cmdline;
 static int initialized = 0;
 
 
-_static_ void __set_oom();
-_static_ void __set_env(app_info_from_db * menu_info, bundle * kb);
-_static_ int __prepare_exec(const char *pkg_name,
+void __set_oom();
+void __set_env(app_info_from_db * menu_info, bundle * kb);
+int __prepare_exec(const char *pkg_name,
 			    const char *app_path, app_info_from_db * menu_info,
 			    bundle * kb);
-_static_ int __fake_launch_app(int cmd, int pid, bundle * kb);
-_static_ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path);
-_static_ int __normal_fork_exec(int argc, char **argv);
-_static_ void __real_launch(const char *app_path, bundle * kb);
+int __fake_launch_app(int cmd, int pid, bundle * kb);
+char **__create_argc_argv(bundle * kb, int *margc, const char *app_path);
+int __normal_fork_exec(int argc, char **argv);
+void __real_launch(const char *app_path, bundle * kb);
 static inline int __parser(const char *arg, char *out, int out_size);
-_static_ void __modify_bundle(bundle * kb, int caller_pid,
+void __modify_bundle(bundle * kb, int caller_pid,
 			    app_info_from_db * menu_info, int cmd);
-_static_ int __child_raise_win_by_x(int pid, void *priv);
-_static_ int __raise_win_by_x(int pid);
-_static_ int __send_to_sigkill(int pid);
-_static_ int __term_app(int pid);
-_static_ int __resume_app(int pid);
-_static_ void __real_send(int clifd, int ret);
-_static_ void __send_result_to_caller(int clifd, int ret);
-_static_ void __launchpad_main_loop(int main_fd);
-_static_ int __launchpad_pre_init(int argc, char **argv);
-_static_ int __launchpad_post_init();
+int __send_to_sigkill(int pid);
+int __term_app(int pid);
+void __real_send(int clifd, int ret);
+void __send_result_to_caller(int clifd, int ret);
+void __launchpad_main_loop(int main_fd);
+int __launchpad_pre_init(int argc, char **argv);
+int __launchpad_post_init();
 
 extern ail_error_e ail_db_close(void);
 
 
 
-_static_ void __set_oom()
+void __set_oom()
 {
 	char buf[MAX_LOCAL_BUFSZ];
 	FILE *fp;
@@ -127,7 +128,7 @@ _static_ void __set_oom()
 	fclose(fp);
 }
 
-_static_ void __set_sdk_env(app_info_from_db* menu_info, char* str) {
+void __set_sdk_env(app_info_from_db* menu_info, char* str) {
 	char buf_pkgname[MAX_LOCAL_BUFSZ];
 	char buf[MAX_LOCAL_BUFSZ];
 	int ret;
@@ -153,7 +154,7 @@ _static_ void __set_sdk_env(app_info_from_db* menu_info, char* str) {
 }
 
 
-_static_ void __set_env(app_info_from_db * menu_info, bundle * kb)
+void __set_env(app_info_from_db * menu_info, bundle * kb)
 {
 	const char *str;
 	const char **str_array;
@@ -186,7 +187,7 @@ _static_ void __set_env(app_info_from_db * menu_info, bundle * kb)
 		setenv("HWACC", menu_info->hwacc, 1);
 }
 
-_static_ int __prepare_exec(const char *pkg_name,
+int __prepare_exec(const char *pkg_name,
 			    const char *app_path, app_info_from_db * menu_info,
 			    bundle * kb)
 {
@@ -235,7 +236,7 @@ _static_ int __prepare_exec(const char *pkg_name,
 	return 0;
 }
 
-_static_ int __fake_launch_app(int cmd, int pid, bundle * kb)
+int __fake_launch_app(int cmd, int pid, bundle * kb)
 {
 	int datalen;
 	int ret;
@@ -248,12 +249,13 @@ _static_ int __fake_launch_app(int cmd, int pid, bundle * kb)
 	return ret;
 }
 
-_static_ char **__add_arg(bundle * kb, char **argv, int *margc, const char *key)
+char** __add_arg(bundle * kb, char **argv, int *margc, const char *key)
 {
 	const char *str = NULL;
 	const char **str_array = NULL;
 	int len = 0;
 	int i;
+	char ** new_argv = NULL;
 
 	if(bundle_get_type(kb, key) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, key, &len);
@@ -265,40 +267,63 @@ _static_ char **__add_arg(bundle * kb, char **argv, int *margc, const char *key)
 		}
 	}
 	if(str_array != NULL) {
-		if(strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0) {
-			argv = (char **) realloc(argv, sizeof(char *) * (*margc+len+2));
-			if(!argv) {
+		if(strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0
+			|| strncmp(key, DLP_K_VALGRIND_ARG, strlen(key)) == 0)
+		{
+			new_argv = (char **) realloc(argv, sizeof(char *) * (*margc+len+2));
+			if(!new_argv) {
 				_E("realloc fail (key = %s)", key);
 				exit(-1);
 			}
 			for(i=*margc+len+1; i-(len+1)>=0; i--) {
-				argv[i] = argv[i-(len+1)];
+				new_argv[i] = new_argv[i-(len+1)];
 			}
-			argv[0] = strdup(PATH_GDBSERVER);
+			// need to add new_argv[0]
 			for(i=0; i<len; i++) {
-				argv[1+i] = strdup(str_array[i]);
+				new_argv[1+i] = strdup(str_array[i]);
 			}
-			len++;	/* gdbserver */
+			len++;	/* gdbserver or valgrind */
+			_D("uid : %d", getuid());
+			_D("euid : %d", geteuid());
+			_D("gid : %d", getgid());
+			_D("egid : %d", getegid());
 		} else {
-			argv = (char **) realloc(argv, sizeof(char *) * (*margc+len+1));
-			if(!argv) {
+			new_argv = (char **) realloc(argv, sizeof(char *) * (*margc+len+1));
+			if(!new_argv) {
 				_E("realloc fail (key = %s)", key);
 				exit(-1);
 			}
 			for(i=0; i<len; i++) {
-				argv[*margc+i] = strdup(str_array[i]);
+				new_argv[*margc+i] = strdup(str_array[i]);
 			}
 		}
-		argv[*margc+len] = NULL;
+		new_argv[*margc+len] = NULL;
 		*margc += len;
+	} else {
+		if(strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0
+			|| strncmp(key, DLP_K_VALGRIND_ARG, strlen(key)) == 0)
+		{
+			new_argv = (char **) realloc(argv, sizeof(char *) * (*margc+2));
+			if(!new_argv) {
+				_E("realloc fail (key = %s)", key);
+				exit(-1);
+			}
+			for(i=*margc+1; i-1>=0; i--) {
+				new_argv[i] = new_argv[i-1];
+			}
+			// need to add new_argv[0]
+			*margc++;
+		}
 	}
 
-	return argv;
+	if(new_argv==NULL) return argv;
+	return new_argv;
 }
 
-_static_ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path)
+char **__create_argc_argv(bundle * kb, int *margc, const char *app_path)
 {
-	char **argv;
+	char **argv = NULL;
+	char **new_argv = NULL;
 	int argc;
 
 	const char *str = NULL;
@@ -306,11 +331,13 @@ _static_ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path
 	int len = 0;
 	int i;
 
-	char buf[MAX_LOCAL_BUFSZ];
-
 	argc = bundle_export_to_argv(kb, &argv);
-	sprintf(buf,"%s.exe",app_path);
-	argv[0] = strdup(buf);
+	if (argv) {
+		argv[0] = strdup(app_path);
+	} else {
+		_E("bundle_export_to_argv error");
+		exit(-1);
+	}
 
 	if(bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
@@ -326,18 +353,27 @@ _static_ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path
 			if(str_array[i] == NULL) break;
 			_D("index : [%d]", i);
 			if (strncmp(str_array[i], SDK_DEBUG, strlen(str_array[i])) == 0) {
-				argv = __add_arg(kb, argv, &argc, DLP_K_DEBUG_ARG);
+				char buf[MAX_LOCAL_BUFSZ];
+				if (argv[0]) free(argv[0]);
+				sprintf(buf,"%s.exe",app_path);
+				argv[0] = strdup(buf);
+				new_argv = __add_arg(kb, argv, &argc, DLP_K_DEBUG_ARG);
+				new_argv[0] = strdup(PATH_GDBSERVER);
+			} else if (strncmp(str_array[i], SDK_VALGRIND, strlen(str_array[i])) == 0) {
+				new_argv = __add_arg(kb, argv, &argc, DLP_K_VALGRIND_ARG);
+				new_argv[0] = strdup(PATH_VALGRIND);
 			} else if (strncmp(str_array[i], SDK_UNIT_TEST, strlen(str_array[i])) == 0) {
-				argv = __add_arg(kb, argv, &argc, DLP_K_UNIT_TEST_ARG);
+				new_argv = __add_arg(kb, argv, &argc, DLP_K_UNIT_TEST_ARG);
 			}
 		}
 	}
 
 	*margc = argc;
-	return argv;
+	if(new_argv==NULL) return argv;
+	return new_argv;
 }
 
-_static_ int __normal_fork_exec(int argc, char **argv)
+int __normal_fork_exec(int argc, char **argv)
 {
 	_D("start real fork and exec\n");
 
@@ -353,7 +389,7 @@ _static_ int __normal_fork_exec(int argc, char **argv)
 	return 0;
 }
 
-_static_ void __real_launch(const char *app_path, bundle * kb)
+void __real_launch(const char *app_path, bundle * kb)
 {
 	int app_argc;
 	char **app_argv;
@@ -474,7 +510,7 @@ static inline int __parser(const char *arg, char *out, int out_size)
 	return -2;
 }
 
-_static_ void __modify_bundle(bundle * kb, int caller_pid,
+void __modify_bundle(bundle * kb, int caller_pid,
 			    app_info_from_db * menu_info, int cmd)
 {
 	bundle_del(kb, AUL_K_PKG_NAME);
@@ -520,31 +556,7 @@ _static_ void __modify_bundle(bundle * kb, int caller_pid,
 	}
 }
 
-_static_ int __child_raise_win_by_x(int pid, void *priv)
-{
-	return x_util_raise_win(pid);
-}
-
-_static_ int __raise_win_by_x(int pid)
-{
-	int pgid;
-	if (x_util_raise_win(pid) == 0)
-		return 0;
-
-	/* support app launched by shell script*/
-	pgid = getpgid(pid);
-	_D("X raise failed. try to find first child & raise it - c:%d p:%d\n",
-	   pgid, pid);
-
-	if (pgid <= 1)
-		return -1;
-	if (__proc_iter_pgid(pgid, __child_raise_win_by_x, NULL) < 0)
-		return -1;
-
-	return 0;
-}
-
-_static_ int __send_to_sigkill(int pid)
+int __send_to_sigkill(int pid)
 {
 	int pgid;
 
@@ -558,7 +570,7 @@ _static_ int __send_to_sigkill(int pid)
 	return 0;
 }
 
-_static_ int __term_app(int pid)
+int __term_app(int pid)
 {
 	int dummy;
 	if (__app_send_raw
@@ -571,30 +583,6 @@ _static_ int __term_app(int pid)
 	}
 	_D("term done\n");
 	return 0;
-}
-
-_static_ int __resume_app(int pid)
-{
-	int dummy;
-	int ret;
-	if ((ret =
-	     __app_send_raw(pid, APP_RESUME_BY_PID, (unsigned char *)&dummy,
-			    sizeof(int))) < 0) {
-		if (ret == -EAGAIN)
-			_E("resume packet timeout error");
-		else {
-			_D("resume packet send error - use raise win");
-			if (__raise_win_by_x(pid) < 0) {
-				_E("raise failed - %d resume fail\n", pid);
-				_E("we will term the app - %d\n", pid);
-				__send_to_sigkill(pid);
-				ret = -1;
-			} else
-				ret = 0;
-		}
-	}
-	_D("resume done\n");
-	return ret;
 }
 
 static int __get_caller_pid(bundle *kb)
@@ -618,7 +606,7 @@ end:
 	return pid;
 }
 
-_static_ int __foward_cmd(int cmd, bundle *kb, int cr_pid)
+int __foward_cmd(int cmd, bundle *kb, int cr_pid)
 {
 	int pid;
 	char tmp_pid[MAX_PID_STR_BUFSZ];
@@ -642,7 +630,7 @@ _static_ int __foward_cmd(int cmd, bundle *kb, int cr_pid)
 	return res;
 }
 
-_static_ void __real_send(int clifd, int ret)
+void __real_send(int clifd, int ret)
 {
 	if (send(clifd, &ret, sizeof(int), MSG_NOSIGNAL) < 0) {
 		if (errno == EPIPE) {
@@ -654,7 +642,7 @@ _static_ void __real_send(int clifd, int ret)
 	close(clifd);
 }
 
-_static_ void __send_result_to_caller(int clifd, int ret)
+void __send_result_to_caller(int clifd, int ret)
 {
 	char *cmdline;
 	int wait_count;
@@ -690,6 +678,7 @@ _static_ void __send_result_to_caller(int clifd, int ret)
 	} while (wait_count <= 20);	/* max 50*20ms will be sleep*/
 
 	if ((!cmdline_exist) && (!cmdline_changed)) {
+		_E("abnormally launched");
 		__real_send(clifd, -1);	/* abnormally launched*/
 		return;
 	}
@@ -782,7 +771,7 @@ int apply_smack_rules(const char* subject, const char* object, const char* acces
 	return 0;
 }
 
-_static_ void __launchpad_main_loop(int main_fd)
+void __launchpad_main_loop(int main_fd)
 {
 	bundle *kb = NULL;
 	app_pkt_t *pkt = NULL;
@@ -867,6 +856,12 @@ _static_ void __launchpad_main_loop(int main_fd)
 						goto end;
 					}
 					if(appid) free(appid);
+
+					// FIXME: set gdbfolder to 755 also
+					if(dlp_chmod(PATH_GDBSERVER, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH, 1) < 0)
+					{
+						_D("unable to set 755 to %s", PATH_GDBSERVER);
+					}
 				}
 			}
 		}
@@ -934,7 +929,7 @@ _static_ void __launchpad_main_loop(int main_fd)
 
 }
 
-_static_ int __launchpad_pre_init(int argc, char **argv)
+int __launchpad_pre_init(int argc, char **argv)
 {
 	int fd;
 
@@ -963,7 +958,7 @@ _static_ int __launchpad_pre_init(int argc, char **argv)
 	return fd;
 }
 
-_static_ int __launchpad_post_init()
+int __launchpad_post_init()
 {
 	/* Setting this as a global variable to keep track 
 	of launchpad poll cnt */
