@@ -1,10 +1,11 @@
 Name:       debug-launchpad
 Summary:    Debug Launchpad
-Version:    0.0.3
+Version:    0.0.4
 Release:    1
-Group:      System/Libraries
+Group:      System Environment/Daemons
 License:    Apache License, Version 2.0
 Source0:    %{name}-%{version}.tar.gz
+BuildRoot:  %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 Requires(post): /sbin/ldconfig
 Requires(post): /usr/bin/systemctl
@@ -38,7 +39,10 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 
+%clean
+rm -rf %{buildroot}
+
 %post
 
 %files
-%{_bindir}/debug_launchpad_preloading_preinitializing_daemon
+%attr(0755, root, root) %{_bindir}/debug_launchpad_preloading_preinitializing_daemon
