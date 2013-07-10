@@ -44,7 +44,7 @@ static int recurse(const char *path, mode_t mode, int (*fn)(const char *,mode_t,
         strncpy(dir, path, n);
         dir[n] = '\0';
         fn(dir, mode,1);
-        return 1;
+        return 0;
     }
     return -1;
 }
@@ -65,6 +65,6 @@ int dlp_chmod(const char *path, mode_t mode, int recursive) {
     if (recursive) {
         return recurse(path, mode, dlp_chmod);
     }
-    return 1;
+    return 0;
 #endif
 }

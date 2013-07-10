@@ -19,7 +19,6 @@
  *
  */
 
-
 /*
  * simple AUL daemon - launchpad 
  */
@@ -80,14 +79,25 @@
 #define DLP_K_UNIT_TEST_ARG "__DLP_UNIT_TEST_ARG__"
 #define DLP_K_VALGRIND_ARG "__DLP_VALGRIND_ARG__"
 
-#define PATH_GDBSERVER "/home/developer/sdk_tools/gdbserver/gdbserver"
-#define PATH_VALGRIND "/home/developer/sdk_tools/valgrind/usr/bin/valgrind"
-#define PATH_DA_SO "/usr/lib/da_probe_osp.so"
-#define PATH_NATIVE_APP "/opt/apps/"
+#define PATH_GDBSERVER	"/home/developer/sdk_tools/gdbserver/gdbserver"
+#define PATH_VALGRIND	"/home/developer/sdk_tools/valgrind/usr/bin/valgrind"
+#define PATH_DA_SO	"/usr/lib/da_probe_osp.so"
+#define PATH_NATIVE_APP	"/opt/apps/"
+
+#define OPT_VALGRIND_LOGFILE		"--log-file="
+#define OPT_VALGRIND_LOGFILE_FIXED	"--log-file=/tmp/valgrind_result.txt"
+#define PATH_VALGRIND_LOGFILE		"/tmp/valgrind_result.txt"
+#define OPT_VALGRIND_XMLFILE		"--xml-file="
+#define OPT_VALGRIND_XMLFILE_FIXED	"--xml-file=/tmp/valgrind_result.xml"
+#define PATH_VALGRIND_XMLFILE		"/tmp/valgrind_result.xml"
+
+#define POLL_VALGRIND_LOGFILE		0x00000001
+#define POLL_VALGRIND_XMLFILE		0x00000002
 
 static char *launchpad_cmdline;
 static int initialized = 0;
 
+static int poll_outputfile = 0;
 
 void __set_oom();
 void __set_env(app_info_from_db * menu_info, bundle * kb);
@@ -135,14 +145,16 @@ void __set_sdk_env(app_info_from_db* menu_info, char* str) {
 
 	_D("key : %s / value : %s", AUL_K_SDK, str);
 	/* http://gcc.gnu.org/onlinedocs/gcc/Cross_002dprofiling.html*/
-	/* GCOV_PREFIX contains the prefix to add to the absolute paths in the object file. */
-	/*		Prefix can be absolute, or relative. The default is no prefix.  */
+	/* GCOV_PREFIX contains the prefix to add to the absolute paths */
+	/*	in the object file. Prefix can be absolute, or relative.*/
+	/*	The default is no prefix.  */
 	/* GCOV_PREFIX_STRIP indicates the how many initial directory names */
-	/*		to stripoff the hardwired absolute paths. Default value is 0. */
+	/*	to stripoff the hardwired absolute paths. Default value is 0. */
 	if (strncmp(str, SDK_CODE_COVERAGE, strlen(str)) == 0) {
 		strncpy(buf_pkgname,_get_pkgname(menu_info),MAX_LOCAL_BUFSZ-1);
 		buf_pkgname[MAX_LOCAL_BUFSZ-1]='\0';
-		snprintf(buf, MAX_LOCAL_BUFSZ, PATH_TMP"/%s"PATH_DATA, strtok(buf_pkgname,"."));
+		snprintf(buf, MAX_LOCAL_BUFSZ, PATH_TMP"/%s"PATH_DATA
+			, strtok(buf_pkgname,"."));
 		ret = setenv("GCOV_PREFIX", buf, 1);
 		_D("GCOV_PREFIX : %d", ret);
 		ret = setenv("GCOV_PREFIX_STRIP", "0", 1);
@@ -207,9 +219,13 @@ int __prepare_exec(const char *pkg_name,
 
 	/* SET PRIVILEGES*/
 	if(bundle_get_val(kb, AUL_K_PRIVACY_APPID) == NULL) {
-		_D("pkg_name : %s / pkg_type : %s / app_path : %s ", pkg_name, menu_info->pkg_type, app_path);
-		if ((ret = __set_access(pkg_name, menu_info->pkg_type, app_path)) < 0) {
-			 _D("fail to set privileges - check your package's credential : %d\n", ret);
+		_D("pkg_name : %s / pkg_type : %s / app_path : %s ", pkg_name
+			, menu_info->pkg_type, app_path);
+		if ((ret = __set_access(pkg_name, menu_info->pkg_type
+			, app_path)) < 0) 
+		{
+			 _D("fail to set privileges - check your package's credential : %d\n"
+				, ret);
 			return -1;
 		}
 	}
@@ -270,7 +286,8 @@ char** __add_arg(bundle * kb, char **argv, int *margc, const char *key)
 		if(strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0
 			|| strncmp(key, DLP_K_VALGRIND_ARG, strlen(key)) == 0)
 		{
-			new_argv = (char **) realloc(argv, sizeof(char *) * (*margc+len+2));
+			new_argv = (char **) realloc(argv
+				, sizeof(char *) * (*margc+len+2));
 			if(!new_argv) {
 				_E("realloc fail (key = %s)", key);
 				exit(-1);
@@ -288,7 +305,8 @@ char** __add_arg(bundle * kb, char **argv, int *margc, const char *key)
 			_D("gid : %d", getgid());
 			_D("egid : %d", getegid());
 		} else {
-			new_argv = (char **) realloc(argv, sizeof(char *) * (*margc+len+1));
+			new_argv = (char **) realloc(argv
+				, sizeof(char *) * (*margc+len+1));
 			if(!new_argv) {
 				_E("realloc fail (key = %s)", key);
 				exit(-1);
@@ -303,7 +321,8 @@ char** __add_arg(bundle * kb, char **argv, int *margc, const char *key)
 		if(strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0
 			|| strncmp(key, DLP_K_VALGRIND_ARG, strlen(key)) == 0)
 		{
-			new_argv = (char **) realloc(argv, sizeof(char *) * (*margc+2));
+			new_argv = (char **) realloc(argv
+				, sizeof(char *) * (*margc+2));
 			if(!new_argv) {
 				_E("realloc fail (key = %s)", key);
 				exit(-1);
@@ -348,23 +367,38 @@ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path)
 			len = 1;
 		}
 	}
-	if(str_array != NULL) {
-		for (i = 0; i < len; i++) {
-			if(str_array[i] == NULL) break;
-			_D("index : [%d]", i);
-			if (strncmp(str_array[i], SDK_DEBUG, strlen(str_array[i])) == 0) {
-				char buf[MAX_LOCAL_BUFSZ];
-				if (argv[0]) free(argv[0]);
-				sprintf(buf,"%s.exe",app_path);
-				argv[0] = strdup(buf);
-				new_argv = __add_arg(kb, argv, &argc, DLP_K_DEBUG_ARG);
-				new_argv[0] = strdup(PATH_GDBSERVER);
-			} else if (strncmp(str_array[i], SDK_VALGRIND, strlen(str_array[i])) == 0) {
-				new_argv = __add_arg(kb, argv, &argc, DLP_K_VALGRIND_ARG);
-				new_argv[0] = strdup(PATH_VALGRIND);
-			} else if (strncmp(str_array[i], SDK_UNIT_TEST, strlen(str_array[i])) == 0) {
-				new_argv = __add_arg(kb, argv, &argc, DLP_K_UNIT_TEST_ARG);
-			}
+	if(str_array == NULL) {
+		*margc = argc;
+		return argv;
+	}
+
+	for (i = 0; i < len; i++) {
+		if(str_array[i] == NULL) break;
+		_D("index : [%d]", i);
+		/* gdbserver */
+		if (strncmp(str_array[i], SDK_DEBUG, strlen(str_array[i])) == 0)
+		{
+			char buf[MAX_LOCAL_BUFSZ];
+			if (argv[0]) free(argv[0]);
+			sprintf(buf,"%s.exe",app_path);
+			argv[0] = strdup(buf);
+			new_argv = __add_arg(kb, argv, &argc, DLP_K_DEBUG_ARG);
+			new_argv[0] = strdup(PATH_GDBSERVER);
+		}
+		/* valgrind */
+		else if (strncmp(str_array[i], SDK_VALGRIND
+			, strlen(str_array[i])) == 0)
+		{
+			new_argv = __add_arg(kb, argv, &argc
+				, DLP_K_VALGRIND_ARG);
+			new_argv[0] = strdup(PATH_VALGRIND);
+		}
+		/* unit test */
+		else if (strncmp(str_array[i], SDK_UNIT_TEST
+			, strlen(str_array[i])) == 0)
+		{
+			new_argv = __add_arg(kb, argv, &argc
+				, DLP_K_UNIT_TEST_ARG);
 		}
 	}
 
@@ -519,7 +553,9 @@ void __modify_bundle(bundle * kb, int caller_pid,
 	bundle_del(kb, AUL_K_HWACC);
 
 	/* Parse app_path to retrieve default bundle*/
-	if (cmd == APP_START || cmd == APP_START_RES || cmd == APP_OPEN || cmd == APP_RESUME) {
+	if (cmd == APP_START || cmd == APP_START_RES || cmd == APP_OPEN
+		|| cmd == APP_RESUME)
+	{
 		char *ptr;
 		char exe[MAX_PATH_LEN];
 		int flag;
@@ -691,7 +727,7 @@ void __send_result_to_caller(int clifd, int ret)
 }
 
 static app_info_from_db *_get_app_info_from_bundle_by_pkgname(
-							const char *pkgname, bundle *kb)
+	const char *pkgname, bundle *kb)
 {
 	app_info_from_db *menu_info;
 
@@ -726,16 +762,19 @@ int get_native_appid(const char* app_path, char** appid) {
 		return -1;
 	}
 
-	if (strlen(*appid)!=APPID_LEN) {
+	if (strlen(*appid) != APPID_LEN) {
 		_E("wrong native appid : %s", *appid);
 		return -1;
 	}
 
-	if (strlen(app_path)<sizeof(PATH_NATIVE_APP)+APPID_LEN-1) {
+	if (strlen(app_path) < sizeof(PATH_NATIVE_APP)+APPID_LEN-1) {
 		_E("wrong native app_path : %s", app_path);
 		return -1;
-	} else if (strncmp(app_path,PATH_NATIVE_APP,sizeof(PATH_NATIVE_APP)-1)
-		|| strncmp(&app_path[sizeof(PATH_NATIVE_APP)-1],*appid,APPID_LEN)) {
+	}
+	else if ( strncmp(app_path, PATH_NATIVE_APP, sizeof(PATH_NATIVE_APP)-1)
+		|| strncmp(&app_path[sizeof(PATH_NATIVE_APP)-1]
+		, *appid,APPID_LEN) )
+	{
 		_E("wrong native app_path : %s", app_path);
 		return -1;
 	}
@@ -744,7 +783,9 @@ int get_native_appid(const char* app_path, char** appid) {
 	return 0;
 }
 
-int apply_smack_rules(const char* subject, const char* object, const char* access_type) {
+int apply_smack_rules(const char* subject, const char* object
+	, const char* access_type)
+{
 	struct smack_accesses *rules = NULL;
 
 	_D("apply_smack_rules : %s %s %s", subject, object, access_type);
@@ -771,6 +812,170 @@ int apply_smack_rules(const char* subject, const char* object, const char* acces
 	return 0;
 }
 
+int __prepare_valgrind_outputfile(bundle *kb)
+{
+	const char *str = NULL;
+	const char **str_array = NULL;
+	int len = 0;
+	int i;
+
+	if(bundle_get_type(kb, DLP_K_VALGRIND_ARG) & BUNDLE_TYPE_ARRAY) {
+		str_array = bundle_get_str_array(kb, DLP_K_VALGRIND_ARG, &len);
+	} else {
+		str = bundle_get_val(kb, DLP_K_VALGRIND_ARG);
+		if(str) {
+			str_array = &str;
+			len = 1;
+		}
+	}
+	if(str_array == NULL) return 0;
+
+	for (i = 0; i < len; i++) {
+		if(str_array[i] == NULL) break;
+		/* valgrind log file option */
+		if (strncmp(str_array[i], OPT_VALGRIND_LOGFILE
+			, strlen(OPT_VALGRIND_LOGFILE)) == 0)
+		{
+			if(strncmp(str_array[i], OPT_VALGRIND_LOGFILE_FIXED
+				, strlen(str_array[i])))
+			{
+				_E("wrong valgrind option(%s). It should be %s"
+					, str_array[i]
+					, OPT_VALGRIND_LOGFILE_FIXED);
+				return 1;
+			}else{
+				poll_outputfile |= POLL_VALGRIND_LOGFILE;
+				if(remove(PATH_VALGRIND_LOGFILE)){
+					_D("cannot remove %s"
+						, PATH_VALGRIND_LOGFILE);
+				}
+			}
+		}
+		/* valgrind xml file option */
+		else if (strncmp(str_array[i], OPT_VALGRIND_XMLFILE
+			, strlen(OPT_VALGRIND_XMLFILE)) == 0)
+		{
+			if(strncmp(str_array[i], OPT_VALGRIND_XMLFILE_FIXED
+				, strlen(str_array[i])))
+			{
+				_E("wrong valgrind option(%s). It should be %s"
+					, str_array[i]
+					, OPT_VALGRIND_XMLFILE_FIXED);
+				return 1;
+			}else{
+				poll_outputfile |= POLL_VALGRIND_XMLFILE;
+				if(remove(PATH_VALGRIND_XMLFILE)){
+					_D("cannot remove %s"
+						, PATH_VALGRIND_XMLFILE);
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+int __prepare_fork(bundle *kb, char *appid)
+{
+	const char *str = NULL;
+	const char **str_array = NULL;
+	int len = 0;
+	int i;
+
+	poll_outputfile = 0;
+	if(bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
+		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
+	} else {
+		str = bundle_get_val(kb, AUL_K_SDK);
+		if(str) {
+			str_array = &str;
+			len = 1;
+		}
+	}
+	if(str_array == NULL) return 0;
+
+	for (i = 0; i < len; i++) {
+		if(str_array[i] == NULL) break;
+		/* gdbserver */
+		if (strncmp(str_array[i], SDK_DEBUG, strlen(str_array[i])) == 0)
+		{
+			if(apply_smack_rules("sdbd",appid,"w")) {
+				_E("unable to set sdbd rules");
+				return 1;
+			}
+
+			// FIXME: set gdbfolder to 755 also
+			if(dlp_chmod(PATH_GDBSERVER
+				, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP
+				|S_IROTH|S_IXOTH
+				, 1))
+			{
+				_D("unable to set 755 to %s", PATH_GDBSERVER);
+			}
+		}
+		/* valgrind */
+		else if (strncmp(str_array[i], SDK_VALGRIND
+			, strlen(str_array[i])) == 0)
+		{
+			if (__prepare_valgrind_outputfile(kb)) return 1;
+		}
+	}
+	return 0;
+}
+
+/* chmod and chsmack to read file without root privilege */
+void __chmod_chsmack_toread(const char * path)
+{
+	/* chmod */
+	if(dlp_chmod(path, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH, 0))
+	{
+		_E("unable to set 644 to %s", path);
+	}else{
+		_D("set 644 to %s", path);
+	}
+
+	/* chsmack */
+	if(smack_setlabel(path, "*", SMACK_LABEL_ACCESS))
+	{
+		_E("failed chsmack -a \"*\" %s", path);
+	}else{
+		_D("chsmack -a \"*\" %s", path);
+	}
+
+	return;
+}
+
+/* waiting for creating outputfile by child process */
+void __waiting_outputfile()
+{
+	int wait_count = 0;
+	while(poll_outputfile && wait_count<10) {
+		/* valgrind log file */
+		if( (poll_outputfile & POLL_VALGRIND_LOGFILE) 
+			&& (access(PATH_VALGRIND_LOGFILE,F_OK)==0) )
+		{
+			__chmod_chsmack_toread(PATH_VALGRIND_LOGFILE);
+			poll_outputfile &= ~POLL_VALGRIND_LOGFILE;
+		}
+
+		/* valgrind xml file */
+		if( (poll_outputfile & POLL_VALGRIND_XMLFILE)
+			&& (access(PATH_VALGRIND_XMLFILE,F_OK)==0) )
+		{
+			__chmod_chsmack_toread(PATH_VALGRIND_XMLFILE);
+			poll_outputfile &= ~POLL_VALGRIND_XMLFILE;
+		}
+		
+		if(poll_outputfile) {
+			_D("-- now wait for creating the file --");
+			usleep(50 * 1000);	/* 50ms sleep*/
+			wait_count++;
+		}
+	}
+
+	if(wait_count==10) _E("faild to waiting");
+	return;
+}
+
 void __launchpad_main_loop(int main_fd)
 {
 	bundle *kb = NULL;
@@ -785,6 +990,7 @@ void __launchpad_main_loop(int main_fd)
 	int is_real_launch = 0;
 
 	char sock_path[UNIX_PATH_MAX] = {0,};
+	char * appid = NULL;
 
 	pkt = __app_recv_raw(main_fd, &clifd, &cr);
 	if (!pkt) {
@@ -820,85 +1026,56 @@ void __launchpad_main_loop(int main_fd)
 		goto end;
 	}
 
+	{
+		int rc = get_native_appid(app_path,&appid);
+		if(rc!=0 || appid==NULL) {
+			_E("unable to get native appid");
+			if(appid) free(appid);
+			goto end;
+		}
+	}
+
 	__modify_bundle(kb, cr.pid, menu_info, pkt->cmd);
 	pkg_name = _get_pkgname(menu_info);
 
 	PERF("get package information & modify bundle done");
 
-	{
-		const char *str = NULL;
-		const char **str_array = NULL;
-		int len = 0;
+	if(__prepare_fork(kb,appid)) goto end;
 
-		if(bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
-			str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
-		} else {
-			str = bundle_get_val(kb, AUL_K_SDK);
-			if(str) {
-				str_array = &str;
-				len = 1;
-			}
-		}
-		if(str_array != NULL) {
-			int i;
-			for (i = 0; i < len; i++) {
-				if(str_array[i] == NULL) break;
-				if (strncmp(str_array[i], SDK_DEBUG, strlen(str_array[i])) == 0) {
-					char * appid = NULL;
-					int rc = get_native_appid(app_path,&appid);
-					if(rc!=0 || appid==NULL) {
-						_E("unable to get native appid");
-						if(appid) free(appid);
-						goto end;
-					}else if(apply_smack_rules("sdbd",appid,"w")) {
-						_E("unable to set sdbd rules");
-						if(appid) free(appid);
-						goto end;
-					}
-					if(appid) free(appid);
+	pid = fork();
+	if (pid == 0) {
+		PERF("fork done");
+		_D("lock up test log(no error) : fork done");
 
-					// FIXME: set gdbfolder to 755 also
-					if(dlp_chmod(PATH_GDBSERVER, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH, 1) < 0)
-					{
-						_D("unable to set 755 to %s", PATH_GDBSERVER);
-					}
-				}
-			}
-		}
+		close(clifd);
+		close(main_fd);
+		__signal_unset_sigchld();
+		__signal_fini();
 
-		pid = fork();
-		if (pid == 0) {
-			PERF("fork done");
-			_D("lock up test log(no error) : fork done");
+		snprintf(sock_path, UNIX_PATH_MAX, "%s/%d", AUL_SOCK_PREFIX
+			, getpid());
+		unlink(sock_path);
 
-			close(clifd);
-			close(main_fd);
-			__signal_unset_sigchld();
-			__signal_fini();
+		PERF("prepare exec - first done");
+		_D("lock up test log(no error) : prepare exec - first done");
 
-			snprintf(sock_path, UNIX_PATH_MAX, "%s/%d", AUL_SOCK_PREFIX, getpid());
-			unlink(sock_path);
-
-			PERF("prepare exec - first done");
-			_D("lock up test log(no error) : prepare exec - first done");
-
-			if (__prepare_exec(pkg_name, app_path,
-					   menu_info, kb) < 0) {
-				_E("preparing work fail to launch - "
-				   "can not launch %s\n", pkg_name);
-				exit(-1);
-			}
-
-			PERF("prepare exec - second done");
-			_D("lock up test log(no error) : prepare exec - second done");
-
-			__real_launch(app_path, kb);
-
+		if (__prepare_exec(pkg_name, app_path,
+				   menu_info, kb) < 0) {
+			_E("preparing work fail to launch - "
+			   "can not launch %s\n", pkg_name);
 			exit(-1);
 		}
-		_D("==> real launch pid : %d %s\n", pid, app_path);
-		is_real_launch = 1;
+
+		PERF("prepare exec - second done");
+		_D("lock up test log(no error) : prepare exec - second done");
+
+		__real_launch(app_path, kb);
+
+		exit(-1);
 	}
+
+	_D("==> real launch pid : %d %s\n", pid, app_path);
+	is_real_launch = 1;
 
  end:
 	__send_result_to_caller(clifd, pid);
@@ -919,6 +1096,8 @@ void __launchpad_main_loop(int main_fd)
 		bundle_free(kb);
 	if (pkt != NULL)
 		free(pkt);
+	if (appid != NULL) 
+		free(appid);
 
 	/* Active Flusing for Daemon */
 	if (initialized > AUL_POLL_CNT) {
@@ -927,6 +1106,7 @@ void __launchpad_main_loop(int main_fd)
 		initialized = 1;
 	}
 
+	if(poll_outputfile) __waiting_outputfile();
 }
 
 int __launchpad_pre_init(int argc, char **argv)

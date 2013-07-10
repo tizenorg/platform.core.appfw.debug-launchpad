@@ -1,6 +1,6 @@
 Name:       debug-launchpad
 Summary:    Debug Launchpad
-Version:    0.0.4
+Version:    0.0.5
 Release:    1
 Group:      System Environment/Daemons
 License:    Apache License, Version 2.0
