@@ -976,6 +976,38 @@ void __waiting_outputfile()
 	return;
 }
 
+int __stdout_stderr_redirection(int defpid)
+{
+	char defpath[UNIX_PATH_MAX];
+	int deffd, result=0; 
+
+	/* stdout */
+	snprintf(defpath, UNIX_PATH_MAX, "/proc/%d/fd/1", defpid);
+	deffd = open(defpath,O_WRONLY);
+	if(deffd < 0) {
+		_E("opening caller(%d) stdout failed due to %s"
+			, defpid, strerror(errno));
+		result++;
+	}else{
+		dup2(deffd, 1);
+		close(deffd);
+	}
+
+	/* stderr */
+	snprintf(defpath, UNIX_PATH_MAX, "/proc/%d/fd/2", defpid);
+	deffd = open(defpath,O_WRONLY);
+	if(deffd < 0) {
+		_E("opening caller(%d) stderr failed due to %s"
+			, defpid,strerror(errno));
+		result+=2;
+	}else{
+		dup2(deffd, 2);
+		close(deffd);
+	}
+
+	return result;
+}
+
 void __launchpad_main_loop(int main_fd)
 {
 	bundle *kb = NULL;
@@ -1055,6 +1087,10 @@ void __launchpad_main_loop(int main_fd)
 		snprintf(sock_path, UNIX_PATH_MAX, "%s/%d", AUL_SOCK_PREFIX
 			, getpid());
 		unlink(sock_path);
+
+		if(__stdout_stderr_redirection(__get_caller_pid(kb))) {
+			_E("__stdout_stderr_redirection fail");
+		}
 
 		PERF("prepare exec - first done");
 		_D("lock up test log(no error) : prepare exec - first done");
