@@ -352,6 +352,9 @@ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path)
 
 	argc = bundle_export_to_argv(kb, &argv);
 	if (argv) {
+		for(i=1; i<argc; i++) {
+			argv[i] = strdup(argv[i]);
+		}
 		argv[0] = strdup(app_path);
 	} else {
 		_E("bundle_export_to_argv error");
