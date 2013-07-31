@@ -1,6 +1,6 @@
 Name:       debug-launchpad
 Summary:    Debug Launchpad
-Version:    0.0.7
+Version:    0.0.8
 Release:    1
 Group:      System Environment/Daemons
 License:    Apache License, Version 2.0
@@ -23,6 +23,7 @@ BuildRequires:  pkgconfig(libprivilege-control)
 BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(libsmack)
 BuildRequires:  pkgconfig(aul)
+BuildRequires:  libcap-devel
 
 
 %description
@@ -32,7 +33,11 @@ Debug launchpad
 %setup -q
 
 %build
-cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
+%ifarch %{ix86}
+cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCH=x86
+%else
+cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DARCH=arm
+%endif
 make %{?jobs:-j%jobs}
 
 %install

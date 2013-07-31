@@ -58,6 +58,7 @@
 #include <sqlite3.h>
 #include <sys/smack.h>
 #include "fileutils.h"
+#include <sys/capability.h>
 
 #define _static_ static inline
 #define POLLFD_MAX 1
@@ -91,9 +92,19 @@
 #define OPT_VALGRIND_XMLFILE_FIXED	"--xml-file=/tmp/valgrind_result.xml"
 #define PATH_VALGRIND_XMLFILE		"/tmp/valgrind_result.xml"
 
+#if (ARCH==arm)
+#define PATH_MEMCHECK	"/opt/home/developer/sdk_tools/valgrind/usr/lib/valgrind/memcheck-arm-linux"
+#elif (ARCH==x86)
+#define PATH_MEMCHECK	"/opt/home/developer/sdk_tools/valgrind/usr/lib/valgrind/memcheck-x86-linux"
+#endif
+
 #define POLL_VALGRIND_LOGFILE		0x00000001
 #define POLL_VALGRIND_XMLFILE		0x00000002
 
+#define CAPABILITY_SET_ORIGINAL		0
+#define CAPABILITY_SET_INHERITABLE	1
+
+static int need_to_set_inh_cap_after_fork = 0;
 static char *launchpad_cmdline;
 static int initialized = 0;
 
@@ -383,7 +394,7 @@ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path)
 		{
 			char buf[MAX_LOCAL_BUFSZ];
 			if (argv[0]) free(argv[0]);
-			sprintf(buf,"%s.exe",app_path);
+			snprintf(buf,MAX_LOCAL_BUFSZ,"%s.exe",app_path);
 			argv[0] = strdup(buf);
 			new_argv = __add_arg(kb, argv, &argc, DLP_K_DEBUG_ARG);
 			new_argv[0] = strdup(PATH_GDBSERVER);
@@ -877,6 +888,64 @@ int __prepare_valgrind_outputfile(bundle *kb)
 	return 0;
 }
 
+extern int capset(cap_user_header_t hdrp, const cap_user_data_t datap);
+
+int __adjust_process_capability(int sv)
+{
+	static struct __user_cap_header_struct h;
+	static struct __user_cap_data_struct ori_d[_LINUX_CAPABILITY_U32S_2];
+	static struct __user_cap_data_struct inh_d[_LINUX_CAPABILITY_U32S_2];
+	static int isinit = 0;
+
+	if(isinit==0) {
+		h.version = _LINUX_CAPABILITY_VERSION_2;
+		h.pid = getpid();
+
+		capget(&h, ori_d);
+		capget(&h, inh_d);
+
+		inh_d[CAP_TO_INDEX(CAP_NET_RAW)].inheritable |=
+			CAP_TO_MASK(CAP_NET_RAW);
+		inh_d[CAP_TO_INDEX(CAP_SYS_CHROOT)].inheritable |=
+			CAP_TO_MASK(CAP_SYS_CHROOT);
+
+		isinit++;
+
+		if(sv == CAPABILITY_SET_ORIGINAL) return 0;
+	}
+
+	if(isinit==0) {
+		_E("__adjust_process_capability init failed");
+		return -1;
+	}
+
+	if(sv == CAPABILITY_SET_ORIGINAL) {
+		h.pid = getpid();
+		if (capset(&h, ori_d) < 0) {
+			_E("Capability setting error");
+			return -1;
+		}
+	}
+	else if (sv == CAPABILITY_SET_INHERITABLE) {
+		h.pid = getpid();
+		if (capset(&h, inh_d) < 0) {
+			_E("Capability setting error");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int __adjust_file_capability(const char * path)
+{
+	if(cap_set_file(path,cap_from_text("CAP_NET_RAW,CAP_SYS_CHROOT+i"))) {
+		_E("cap_set_file failed : %s", path);
+		return -1;
+	}
+	return 0;
+}
+
 int __prepare_fork(bundle *kb, char *appid)
 {
 	const char *str = NULL;
@@ -914,12 +983,15 @@ int __prepare_fork(bundle *kb, char *appid)
 			{
 				_D("unable to set 755 to %s", PATH_GDBSERVER);
 			}
+			__adjust_file_capability(PATH_GDBSERVER);
+			need_to_set_inh_cap_after_fork++;
 		}
 		/* valgrind */
 		else if (strncmp(str_array[i], SDK_VALGRIND
 			, strlen(str_array[i])) == 0)
 		{
 			if (__prepare_valgrind_outputfile(kb)) return 1;
+			__adjust_file_capability(PATH_MEMCHECK);
 		}
 	}
 	return 0;
@@ -1079,6 +1151,10 @@ void __launchpad_main_loop(int main_fd)
 
 	pid = fork();
 	if (pid == 0) {
+		if(need_to_set_inh_cap_after_fork) {
+			__adjust_process_capability(CAPABILITY_SET_INHERITABLE);
+			need_to_set_inh_cap_after_fork = 0;
+		}
 		PERF("fork done");
 		_D("lock up test log(no error) : fork done");
 
@@ -1201,6 +1277,8 @@ int main(int argc, char **argv)
 	int main_fd;
 	struct pollfd pfds[POLLFD_MAX];
 	int i;
+
+	__adjust_process_capability(CAPABILITY_SET_ORIGINAL);
 
 	/* init without concerning X & EFL*/
 	main_fd = __launchpad_pre_init(argc, argv);
