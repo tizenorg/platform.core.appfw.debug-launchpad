@@ -953,6 +953,7 @@ int __prepare_fork(bundle *kb, char *appid)
 	int len = 0;
 	int i;
 
+	need_to_set_inh_cap_after_fork=0;
 	poll_outputfile = 0;
 	if(bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
@@ -1153,7 +1154,6 @@ void __launchpad_main_loop(int main_fd)
 	if (pid == 0) {
 		if(need_to_set_inh_cap_after_fork) {
 			__adjust_process_capability(CAPABILITY_SET_INHERITABLE);
-			need_to_set_inh_cap_after_fork = 0;
 		}
 		PERF("fork done");
 		_D("lock up test log(no error) : fork done");
