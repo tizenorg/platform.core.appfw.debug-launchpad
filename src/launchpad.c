@@ -398,6 +398,7 @@ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path)
 			argv[0] = strdup(buf);
 			new_argv = __add_arg(kb, argv, &argc, DLP_K_DEBUG_ARG);
 			new_argv[0] = strdup(PATH_GDBSERVER);
+			argv = new_argv;
 		}
 		/* valgrind */
 		else if (strncmp(str_array[i], SDK_VALGRIND
@@ -406,6 +407,7 @@ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path)
 			new_argv = __add_arg(kb, argv, &argc
 				, DLP_K_VALGRIND_ARG);
 			new_argv[0] = strdup(PATH_VALGRIND);
+			argv = new_argv;
 		}
 		/* unit test */
 		else if (strncmp(str_array[i], SDK_UNIT_TEST
@@ -413,6 +415,7 @@ char **__create_argc_argv(bundle * kb, int *margc, const char *app_path)
 		{
 			new_argv = __add_arg(kb, argv, &argc
 				, DLP_K_UNIT_TEST_ARG);
+			argv = new_argv;
 		}
 	}
 
