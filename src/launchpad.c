@@ -342,7 +342,7 @@ char** __add_arg(bundle * kb, char **argv, int *margc, const char *key)
 				new_argv[i] = new_argv[i-1];
 			}
 			// need to add new_argv[0]
-			*margc++;
+			(*margc)++;
 		}
 	}
 
@@ -1141,7 +1141,10 @@ void __launchpad_main_loop(int main_fd)
 		int rc = get_native_appid(app_path,&appid);
 		if(rc!=0 || appid==NULL) {
 			_E("unable to get native appid");
-			if(appid) free(appid);
+			if(appid){
+				free(appid);
+				appid = NULL;
+			}
 			goto end;
 		}
 	}
