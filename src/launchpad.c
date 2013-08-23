@@ -82,7 +82,7 @@
 
 #define PATH_GDBSERVER	"/home/developer/sdk_tools/gdbserver/gdbserver"
 #define PATH_VALGRIND	"/home/developer/sdk_tools/valgrind/usr/bin/valgrind"
-#define PATH_DA_SO	"/usr/lib/da_probe_osp.so"
+#define PATH_DA_SO	"/usr/lib/da_probe_tizen.so"
 #define PATH_NATIVE_APP	"/opt/apps/"
 
 #define OPT_VALGRIND_LOGFILE		"--log-file="
