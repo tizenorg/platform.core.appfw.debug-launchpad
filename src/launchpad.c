@@ -74,11 +74,13 @@
 #define SDK_DYNAMIC_ANALYSIS "DYNAMIC_ANALYSIS"
 #define SDK_UNIT_TEST "UNIT_TEST"
 #define SDK_VALGRIND "VALGRIND"
+#define SDK_LD_FLAG "LD_FLAG"
 
 /* DLP is short for debug-launchpad */
 #define DLP_K_DEBUG_ARG "__DLP_DEBUG_ARG__"
 #define DLP_K_UNIT_TEST_ARG "__DLP_UNIT_TEST_ARG__"
 #define DLP_K_VALGRIND_ARG "__DLP_VALGRIND_ARG__"
+#define DLP_K_LD_FLAG "__DLP_LD_FLAG__"
 
 #define PATH_GDBSERVER	"/home/developer/sdk_tools/gdbserver/gdbserver"
 #define PATH_VALGRIND	"/home/developer/sdk_tools/valgrind/usr/bin/valgrind"
@@ -149,7 +151,7 @@ void __set_oom()
 	fclose(fp);
 }
 
-void __set_sdk_env(app_info_from_db* menu_info, char* str) {
+void __set_sdk_env(app_info_from_db* menu_info, char* str, bundle * kb) {
 	char buf_pkgname[MAX_LOCAL_BUFSZ];
 	char buf[MAX_LOCAL_BUFSZ];
 	int ret;
@@ -170,9 +172,43 @@ void __set_sdk_env(app_info_from_db* menu_info, char* str) {
 		_D("GCOV_PREFIX : %d", ret);
 		ret = setenv("GCOV_PREFIX_STRIP", "0", 1);
 		_D("GCOV_PREFIX_STRIP : %d", ret);
-	} else if (strncmp(str, SDK_DYNAMIC_ANALYSIS, strlen(str)) == 0) {
+	}
+	else if (strncmp(str, SDK_DYNAMIC_ANALYSIS, strlen(str)) == 0)
+	{
 		ret = setenv("LD_PRELOAD", PATH_DA_SO, 1);
 		_D("LD_PRELOAD : %d", ret);
+	}
+	else if (strncmp(str, SDK_LD_FLAG, strlen(str)) == 0)
+	{
+		const char *flag_str = NULL;
+		const char **flag_str_array = NULL;
+		int flag_len;
+		if(bundle_get_type(kb, DLP_K_LD_FLAG) & BUNDLE_TYPE_ARRAY) {
+			flag_str_array = bundle_get_str_array(kb, DLP_K_LD_FLAG, &flag_len);
+		} else {
+			flag_str = bundle_get_val(kb, DLP_K_LD_FLAG);
+			if(flag_str) {
+				flag_str_array = &flag_str;
+				flag_len = 1;
+			}
+		}
+		if(flag_str_array != NULL) {
+			int i;
+			char * f_name;
+			char * f_value;
+			for (i = 0; i < flag_len; i++) {
+				strncpy(buf,flag_str_array[i],MAX_LOCAL_BUFSZ);
+				f_name = strtok(buf,"=");
+				f_value = strtok(NULL,"=");
+				if(f_value) {
+					ret = setenv(f_name,f_value,1);
+					_D("LD_FLAG : %s %s %d",f_name,f_value,ret);
+				} else {
+					_E("LD_FLAG : Wrong option! %s", flag_str_array[i]);
+				}
+			}
+		}
+
 	}
 }
 
@@ -197,13 +233,13 @@ void __set_env(app_info_from_db * menu_info, bundle * kb)
 		if(str_array != NULL) {
 			for (i = 0; i < len; i++) {
 				_D("index : [%d]", i);
-				__set_sdk_env(menu_info, (char *)str_array[i]);
+				__set_sdk_env(menu_info, (char *)str_array[i], kb);
 			}
 		}
 	} else {
 		str = bundle_get_val(kb, AUL_K_SDK);
 		if(str != NULL) {
-			__set_sdk_env(menu_info, (char *)str);
+			__set_sdk_env(menu_info, (char *)str, kb);
 		}
 	}
 	if (menu_info->hwacc != NULL)
