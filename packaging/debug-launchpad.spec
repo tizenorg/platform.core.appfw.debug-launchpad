@@ -44,6 +44,9 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 
+mkdir -p %{buildroot}/usr/share/license
+cp LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
+
 %clean
 rm -rf %{buildroot}
 
@@ -51,3 +54,4 @@ rm -rf %{buildroot}
 
 %files
 %attr(0755, root, root) %{_bindir}/debug_launchpad_preloading_preinitializing_daemon
+/usr/share/license/%{name}
