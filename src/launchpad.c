@@ -111,6 +111,7 @@ static char *launchpad_cmdline;
 static int initialized = 0;
 
 static int poll_outputfile = 0;
+static int is_gdbserver_launched;
 
 void __set_oom();
 void __set_env(app_info_from_db * menu_info, bundle * kb);
@@ -1005,6 +1006,10 @@ int __prepare_fork(bundle *kb, char *appid)
 	}
 	if(str_array == NULL) return 0;
 
+	is_gdbserver_launched = 0;
+	gdbserver_pid = -1;
+	gdbserver_app_pid = -1;
+
 	for (i = 0; i < len; i++) {
 		if(str_array[i] == NULL) break;
 		/* gdbserver */
@@ -1025,6 +1030,7 @@ int __prepare_fork(bundle *kb, char *appid)
 			}
 			__adjust_file_capability(PATH_GDBSERVER);
 			need_to_set_inh_cap_after_fork++;
+			is_gdbserver_launched++;
 		}
 		/* valgrind */
 		else if (strncmp(str_array[i], SDK_VALGRIND
@@ -1229,6 +1235,21 @@ void __launchpad_main_loop(int main_fd)
 		__real_launch(app_path, kb);
 
 		exit(-1);
+	}
+
+	if(is_gdbserver_launched) {
+		char buf[MAX_LOCAL_BUFSZ];
+
+		usleep(100 * 1000);	/* 100ms sleep */
+		snprintf(buf, MAX_LOCAL_BUFSZ, "%s.exe", app_path);
+		gdbserver_app_pid = __proc_iter_cmdline(NULL, buf);
+
+		if(gdbserver_app_pid == -1) {
+			_E("faild to get app pid");
+		} else {
+			gdbserver_pid = pid;
+			pid = gdbserver_app_pid;
+		}
 	}
 
 	_D("==> real launch pid : %d %s\n", pid, app_path);

@@ -26,6 +26,8 @@
 static struct sigaction old_sigchild;
 static DBusConnection *bus = NULL;
 sigset_t oldmask;
+static int gdbserver_pid;
+static int gdbserver_app_pid;
 
 static inline void __socket_garbage_collector()
 {
@@ -122,6 +124,10 @@ static int __sigchild_action(void *data)
 	dead_pid = (pid_t) data;
 	if (dead_pid <= 0)
 		goto end;
+
+	/* send app pid instead of gdbserver pid */
+	if(dead_pid == gdbserver_pid)
+		dead_pid = gdbserver_app_pid;
 
 	__send_app_dead_signal(dead_pid);
 
