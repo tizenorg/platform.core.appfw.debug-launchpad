@@ -93,6 +93,8 @@
 #define OPT_VALGRIND_XMLFILE		"--xml-file="
 #define OPT_VALGRIND_XMLFILE_FIXED	"--xml-file=/tmp/valgrind_result.xml"
 #define PATH_VALGRIND_XMLFILE		"/tmp/valgrind_result.xml"
+#define OPT_VALGRIND_MASSIFFILE		"--massif-out-file="
+#define OPT_VALGRIND_MASSIFFILE_FIXED	"--massif-out-file=/tmp/valgrind_result.xml"
 
 #if (ARCH==arm)
 #define PATH_MEMCHECK	"/opt/home/developer/sdk_tools/valgrind/usr/lib/valgrind/memcheck-arm-linux"
@@ -888,15 +890,14 @@ int __prepare_valgrind_outputfile(bundle *kb)
 		if(str_array[i] == NULL) break;
 		/* valgrind log file option */
 		if (strncmp(str_array[i], OPT_VALGRIND_LOGFILE
-			, strlen(OPT_VALGRIND_LOGFILE)) == 0)
+			, sizeof(OPT_VALGRIND_LOGFILE)-1) == 0)
 		{
-			if(strncmp(str_array[i], OPT_VALGRIND_LOGFILE_FIXED
-				, strlen(str_array[i])))
+			if(strcmp(str_array[i], OPT_VALGRIND_LOGFILE_FIXED))
 			{
 				_E("wrong valgrind option(%s). It should be %s"
 					, str_array[i]
 					, OPT_VALGRIND_LOGFILE_FIXED);
-				return 1;
+				return -1;
 			}else{
 				poll_outputfile |= POLL_VALGRIND_LOGFILE;
 				if(remove(PATH_VALGRIND_LOGFILE)){
@@ -907,15 +908,32 @@ int __prepare_valgrind_outputfile(bundle *kb)
 		}
 		/* valgrind xml file option */
 		else if (strncmp(str_array[i], OPT_VALGRIND_XMLFILE
-			, strlen(OPT_VALGRIND_XMLFILE)) == 0)
+			, sizeof(OPT_VALGRIND_XMLFILE)-1) == 0)
 		{
-			if(strncmp(str_array[i], OPT_VALGRIND_XMLFILE_FIXED
-				, strlen(str_array[i])))
+			if(strcmp(str_array[i], OPT_VALGRIND_XMLFILE_FIXED))
 			{
 				_E("wrong valgrind option(%s). It should be %s"
 					, str_array[i]
 					, OPT_VALGRIND_XMLFILE_FIXED);
-				return 1;
+				return -1;
+			}else{
+				poll_outputfile |= POLL_VALGRIND_XMLFILE;
+				if(remove(PATH_VALGRIND_XMLFILE)){
+					_D("cannot remove %s"
+						, PATH_VALGRIND_XMLFILE);
+				}
+			}
+		}
+		/* valgrind massif file option */
+		else if (strncmp(str_array[i], OPT_VALGRIND_MASSIFFILE
+			, sizeof(OPT_VALGRIND_MASSIFFILE)-1) == 0)
+		{
+			if(strcmp(str_array[i], OPT_VALGRIND_MASSIFFILE_FIXED))
+			{
+				_E("wrong valgrind option(%s). It should be %s"
+					, str_array[i]
+					, OPT_VALGRIND_MASSIFFILE_FIXED);
+				return -1;
 			}else{
 				poll_outputfile |= POLL_VALGRIND_XMLFILE;
 				if(remove(PATH_VALGRIND_XMLFILE)){
@@ -1017,7 +1035,7 @@ int __prepare_fork(bundle *kb, char *appid)
 		{
 			if(apply_smack_rules("sdbd",appid,"w")) {
 				_E("unable to set sdbd rules");
-				return 1;
+				return -1;
 			}
 
 			// FIXME: set gdbfolder to 755 also
@@ -1036,7 +1054,8 @@ int __prepare_fork(bundle *kb, char *appid)
 		else if (strncmp(str_array[i], SDK_VALGRIND
 			, strlen(str_array[i])) == 0)
 		{
-			if (__prepare_valgrind_outputfile(kb)) return 1;
+			if (__prepare_valgrind_outputfile(kb) == -1) 
+				return -1;
 			__adjust_file_capability(PATH_MEMCHECK);
 		}
 	}
@@ -1196,7 +1215,7 @@ void __launchpad_main_loop(int main_fd)
 
 	PERF("get package information & modify bundle done");
 
-	if(__prepare_fork(kb,appid)) goto end;
+	if(__prepare_fork(kb,appid) == -1) goto end;
 
 	pid = fork();
 	if (pid == 0) {
