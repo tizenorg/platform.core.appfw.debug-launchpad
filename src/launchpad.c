@@ -87,15 +87,6 @@
 #define PATH_DA_SO	"/usr/lib/da_probe_tizen.so"
 #define PATH_NATIVE_APP	"/opt/apps/"
 
-#define OPT_VALGRIND_LOGFILE		"--log-file="
-#define OPT_VALGRIND_LOGFILE_FIXED	"--log-file=/tmp/valgrind_result.txt"
-#define PATH_VALGRIND_LOGFILE		"/tmp/valgrind_result.txt"
-#define OPT_VALGRIND_XMLFILE		"--xml-file="
-#define OPT_VALGRIND_XMLFILE_FIXED	"--xml-file=/tmp/valgrind_result.xml"
-#define PATH_VALGRIND_XMLFILE		"/tmp/valgrind_result.xml"
-#define OPT_VALGRIND_MASSIFFILE		"--massif-out-file="
-#define OPT_VALGRIND_MASSIFFILE_FIXED	"--massif-out-file=/tmp/valgrind_result.xml"
-
 #if (ARCH==arm)
 #define PATH_MEMCHECK	"/opt/home/developer/sdk_tools/valgrind/usr/lib/valgrind/memcheck-arm-linux"
 #elif (ARCH==x86)
@@ -935,7 +926,6 @@ int __prepare_valgrind_outputfile(bundle *kb)
 					, OPT_VALGRIND_MASSIFFILE_FIXED);
 				return -1;
 			}else{
-				poll_outputfile |= POLL_VALGRIND_XMLFILE;
 				if(remove(PATH_VALGRIND_XMLFILE)){
 					_D("cannot remove %s"
 						, PATH_VALGRIND_XMLFILE);
@@ -1062,27 +1052,6 @@ int __prepare_fork(bundle *kb, char *appid)
 	return 0;
 }
 
-/* chmod and chsmack to read file without root privilege */
-void __chmod_chsmack_toread(const char * path)
-{
-	/* chmod */
-	if(dlp_chmod(path, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH, 0))
-	{
-		_E("unable to set 644 to %s", path);
-	}else{
-		_D("set 644 to %s", path);
-	}
-
-	/* chsmack */
-	if(smack_setlabel(path, "*", SMACK_LABEL_ACCESS))
-	{
-		_E("failed chsmack -a \"*\" %s", path);
-	}else{
-		_D("chsmack -a \"*\" %s", path);
-	}
-
-	return;
-}
 
 /* waiting for creating outputfile by child process */
 void __waiting_outputfile()
@@ -1104,7 +1073,7 @@ void __waiting_outputfile()
 			__chmod_chsmack_toread(PATH_VALGRIND_XMLFILE);
 			poll_outputfile &= ~POLL_VALGRIND_XMLFILE;
 		}
-		
+
 		if(poll_outputfile) {
 			_D("-- now wait for creating the file --");
 			usleep(50 * 1000);	/* 50ms sleep*/
