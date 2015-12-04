@@ -1,0 +1,11 @@
+[Unit]
+Description=The debug preload/preinit daemon Socket
+
+[Socket]
+ListenStream=/tmp/alaunch/-4
+DirectoryMode=1777
+SmackLabelIPIn=*
+SmackLabelIPOut=@
+
+[Install]
+WantedBy=sockets.target
