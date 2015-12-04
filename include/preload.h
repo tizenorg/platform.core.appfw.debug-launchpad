@@ -1,9 +1,5 @@
 /*
- *  debug-launchpad
- *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
- *
- * Contact: Jungmin Cho <chivalry.cho@samsung.com>, Gwangho Hwang <gwang.hwang@samsung.com>
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
-
 
 #ifdef PRELOAD_ACTIVATE 
 
@@ -46,9 +40,9 @@ static inline void __preload_init(int argc, char **argv)
 
 	g_argc = argc;
 	g_argv = argv;
-	for (i = 0; i < argc; i++) {
+	for (i = 0; i < argc; i++)
 		max_cmdline_size += (strlen(argv[i]) + 1);
-	}
+
 	_D("max_cmdline_size = %d", max_cmdline_size);
 
 	preload_list = fopen(PRELOAD_FILE, "rt");
@@ -136,11 +130,7 @@ static inline void __preload_exec(int argc, char **argv)
 
 	exit(0);
 }
-
 #else
-
 static inline void __preload_init();
 static inline void __preload_exec(int argc, char **argv);
-
 #endif
-

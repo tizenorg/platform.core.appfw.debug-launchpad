@@ -1,9 +1,5 @@
 /*
- *  debug-launchpad
- *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
- *
- * Contact: Jungmin Cho <chivalry.cho@samsung.com>, Gwangho Hwang <gwang.hwang@samsung.com>
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +12,14 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
 
 #define LAUNCHPAD_LOG
 #define DAC_ACTIVATE
 #define PRELOAD_ACTIVATE
 #define PREEXEC_ACTIVATE
-/*#define GL_ACTIVATE*/
-/*#define HEAPDGB_ACTIVATE*/
-/*#define PERF_ACTIVATE*/
 
+#endif /* __CONFIG_H__ */
