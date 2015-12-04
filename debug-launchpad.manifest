@@ -1,0 +1,10 @@
+<manifest>
+	<request>
+		<domain name="_"/>
+	</request>
+	<assign>
+		<filesystem path="/usr/bin/debug_launchpad_preloading_preinitializing_daemon" label="_" exec_label="none" />
+		<filesystem path="/usr/bin/appid2pid" label="_"/>
+		<filesystem path="/usr/bin/launch_debug" label="_"/>
+	</assign>
+</manifest>
