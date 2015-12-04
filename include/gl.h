@@ -1,9 +1,5 @@
 /*
- *  debug-launchpad
- *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
- *
- * Contact: Jungmin Cho <chivalry.cho@samsung.com>, Gwangho Hwang <gwang.hwang@samsung.com>
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,27 +12,15 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
+#ifndef __GL_H__
+#define __GL_H__
 
-#ifdef DAC_ACTIVATE
-
-#include <privilege-control.h>
-
-#define INHOUSE_UID     5000
-static inline int __set_access(const char* pkg_name, const char* pkg_type, const char* app_path)
-{
-	return set_app_privilege(pkg_name, pkg_type, app_path);
-}
-
+#ifdef GL_ACTIVATE
+#define USE_ENGINE(engine) setenv("ELM_ENGINE", engine, 1)
 #else
-
-static inline int __set_access(const char* pkg_name, const char* pkg_type, const char* app_path)
-{
-	return 0;
-}
-
+#define USE_ENGINE(engine)
 #endif
 
-
+#endif /* __GL_H__ */

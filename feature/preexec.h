@@ -23,11 +23,8 @@
 
 #include <dlfcn.h>
 #include <glib.h>
+
 #define PREEXEC_FILE SHARE_PREFIX"/preexec_list.txt"
-
-static int preexec_initialized = 0;
-
-GSList *preexec_list = NULL;
 
 typedef struct _preexec_list_t {
 	char *pkg_type;
@@ -35,7 +32,10 @@ typedef struct _preexec_list_t {
 	int (*dl_do_pre_exe) (char *, char *);
 } preexec_list_t;
 
-static void __preexec_list_free()
+static int preexec_initialized = 0;
+static GSList *preexec_list = NULL;
+
+static void __preexec_list_free(void)
 {
 	GSList *iter = NULL;
 	preexec_list_t *type_t;
@@ -50,6 +50,7 @@ static void __preexec_list_free()
 			free(type_t);
 		}
 	}
+
 	g_slist_free(preexec_list);
 	preexec_initialized = 0;
 	return;
@@ -171,7 +172,7 @@ static inline void __preexec_run(const char *pkg_type, const char *pkg_name,
 
 #else
 
-static void __preexec_list_free()
+static void __preexec_list_free(void)
 {
 }
 
@@ -179,8 +180,8 @@ static inline void __preexec_init(int argc, char **argv)
 {
 }
 
-static inline void __preexec_run(const char *pkg_type, const char *pkg_name,
-				 const char *app_path)
+static inline void __preexec_run(const char *pkg_type,
+		const char *pkg_name,  const char *app_path)
 {
 }
 
