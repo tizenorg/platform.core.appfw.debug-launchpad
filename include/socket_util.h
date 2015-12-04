@@ -1,9 +1,5 @@
 /*
- *  debug-launchpad
- *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
- *
- * Contact: Jungmin Cho <chivalry.cho@samsung.com>, Gwangho Hwang <gwang.hwang@samsung.com>
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +12,29 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
+#ifndef __SOCKET_UTIL_H__
+#define __SOCKET_UTIL_H__
 
-#define LAUNCHPAD_LOG
-#define DAC_ACTIVATE
-#define PRELOAD_ACTIVATE
-#define PREEXEC_ACTIVATE
-/*#define GL_ACTIVATE*/
-/*#define HEAPDGB_ACTIVATE*/
-/*#define PERF_ACTIVATE*/
+#define _GNU_SOURCE
 
+#include <unistd.h>
+#include <ctype.h>
+#include <sys/socket.h>
+
+#define SOCKET_PATH "/run/user"
+#define MAX_LOCAL_BUFSZ 128
+#define AUL_SOCK_MAXBUFF 65535
+
+typedef struct _app_pkt_t {
+	int cmd;
+	int len;
+	unsigned char data[1];
+} app_pkt_t;
+
+int create_server_sock(void);
+app_pkt_t *recv_pkt_raw(int fd, int *clifd, struct ucred *cr);
+int send_pkt_raw(int client_fd, app_pkt_t *pkt);
+
+#endif /* __SOCKET_UTIL_H__ */
