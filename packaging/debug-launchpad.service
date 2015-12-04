@@ -1,0 +1,6 @@
+[Unit]
+Description=Start the debug preload/preinit daemon
+After=dbus.service ac.service
+
+[Service]
+ExecStart=/usr/bin/debug_launchpad_preloading_preinitializing_daemon
