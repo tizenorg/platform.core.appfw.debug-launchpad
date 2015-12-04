@@ -1,9 +1,5 @@
 /*
- *  debug-launchpad
- *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
- *
- * Contact: Jungmin Cho <chivalry.cho@samsung.com>, Gwangho Hwang <gwang.hwang@samsung.com>
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +12,21 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
+#ifndef __SIGNAL_UTIL_H__
+#define __SIGNAL_UTIL_H__
 
-#ifdef GL_ACTIVATE
+#include <sys/signalfd.h>
 
-#define USE_ENGINE(engine) setenv("ELM_ENGINE", engine, 1);
+void _set_gdbserver_pid(pid);
+void _set_gdbserver_app_pid(pid);
+int _send_app_dead_signal(int dead_pid);
+int _send_app_launch_signal(int launch_pid);
+void _debug_launchpad_sigchld(struct signalfd_siginfo *info);
+int _signal_init(void);
+int _signal_get_sighlc_fd(void);
+int _signal_unblock_sigchld(void);
+int _signal_fini(void)
 
-#else
-
-#define USE_ENGINE(engine)
-
-#endif
-
+#endif /* __SIGNAL_UTIL_H__ */
