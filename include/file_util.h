@@ -1,9 +1,5 @@
 /*
- *  debug-launchpad
- *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
- *
- * Contact: Jungmin Cho <chivalry.cho@samsung.com>, Gwangho Hwang <gwang.hwang@samsung.com>
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +12,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
+#ifndef __FILE_UTIL_H__
+#define __FILE_UTIL_H__
 
-#ifdef GL_ACTIVATE
+#include <sys/stat.h>
 
-#define USE_ENGINE(engine) setenv("ELM_ENGINE", engine, 1);
+int dlp_chmod(const char *path, mode_t mode, int recursive);
 
-#else
-
-#define USE_ENGINE(engine)
-
-#endif
-
+#endif /* __FILE_UTIL_H__ */
