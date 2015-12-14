@@ -420,7 +420,7 @@ end:
 	__send_result_to_caller(clifd, pid, app_path);
 
 	if (pid > 0)
-		_send_app_launch_signal(pid);
+		_send_app_launch_signal(pid, appinfo->appid);
 	if (appinfo)
 		_appinfo_free(appinfo);
 	if (kb)

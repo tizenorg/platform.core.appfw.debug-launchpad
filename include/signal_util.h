@@ -20,7 +20,7 @@
 #include <sys/signalfd.h>
 
 int _send_app_dead_signal(int dead_pid);
-int _send_app_launch_signal(int launch_pid);
+int _send_app_launch_signal(int launch_pid, const char *app_id);
 void _debug_launchpad_sigchld(struct signalfd_siginfo *info);
 int _signal_init(void);
 int _signal_get_sigchld_fd(void);
