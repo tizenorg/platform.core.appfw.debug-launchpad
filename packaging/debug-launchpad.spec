@@ -20,10 +20,7 @@ BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(bundle)
 BuildRequires:  pkgconfig(dlog)
-BuildRequires:  pkgconfig(libprivilege-control)
-BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(libsmack)
-BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(security-manager)
 
 %if "%{?profile}" == "wearable"

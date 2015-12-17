@@ -45,6 +45,7 @@
 #define DLP_K_UNIT_TEST_ARG "__DLP_UNIT_TEST_ARG__"
 #define DLP_K_VALGRIND_ARG "__DLP_VALGRIND_ARG__"
 #define DLP_K_ATTACH_ARG "__DLP_ATTACH_ARG__"
+#define DLP_K_DEBUG "__DLP_DEBUG__"
 
 #define PATH_GDBSERVER "/home/developer/sdk_tools/gdbserver/gdbserver"
 #define PATH_VALGRIND "/home/developer/sdk_tools/valgrind/usr/bin/valgrind"

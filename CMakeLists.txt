@@ -19,7 +19,7 @@ MESSAGE("Build type: ${CMAKE_BUILD_TYPE}")
 # Set required packages
 INCLUDE(FindPkgConfig)
 
-SET(pkgs_requires "dlog glib-2.0 libprivilege-control dbus-glib-1 bundle vconf libsmack security-manager pkgmgr-info")
+SET(pkgs_requires "dlog glib-2.0 dbus-glib-1 bundle libsmack security-manager")
 IF(_APPFW_FEATURE_SOCKET_ACTIVATION)
 	SET(pkgs_requires "${pkgs_requires} libsystemd-daemon")
 	ADD_DEFINITIONS("-D_APPFW_FEATURE_SOCKET_ACTIVATION")
