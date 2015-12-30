@@ -36,7 +36,7 @@
 
 #define SOCKET_PATH "/run/user"
 #define MAX_LOCAL_BUFSZ 128
-#define AUL_SOCK_MAXBUFF 65535
+#define AUL_SOCK_MAXBUFF 131071
 
 #define PAD_CMD_LAUNCH 0
 
