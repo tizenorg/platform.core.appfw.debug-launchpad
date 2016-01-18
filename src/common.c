@@ -51,7 +51,7 @@
 #define MAX_CMD_BUFSZ 1024
 #define PATH_TMP "/tmp"
 #define PATH_DATA "/data"
-#define AUL_PKT_HEADER_SIZE (sizeof(int) + sizeof(int))
+#define AUL_PKT_HEADER_SIZE (sizeof(int) + sizeof(int) + sizeof(int))
 
 static void __set_sock_option(int fd, int cli)
 {
@@ -162,6 +162,7 @@ app_pkt_t *_recv_pkt_raw(int fd, int *clifd, struct ucred *cr)
 	unsigned char buf[AUL_SOCK_MAXBUFF];
 	int cmd;
 	int datalen;
+	int opt;
 
 	sun_size = sizeof(struct sockaddr_un);
 
@@ -195,6 +196,7 @@ retry_recv:
 	}
 	memcpy(&cmd, buf, sizeof(int));
 	memcpy(&datalen, buf + sizeof(int), sizeof(int));
+	memcpy(&opt, buf + sizeof(int) + sizeof(int), sizeof(int));
 
 	/* allocate for a null byte */
 	pkt = (app_pkt_t *)calloc(1, AUL_PKT_HEADER_SIZE + datalen + 1);
@@ -204,6 +206,7 @@ retry_recv:
 	}
 	pkt->cmd = cmd;
 	pkt->len = datalen;
+	pkt->opt = opt;
 
 	len = 0;
 	while (len != pkt->len) {
@@ -219,32 +222,6 @@ retry_recv:
 	}
 
 	return pkt;
-}
-
-int _send_pkt_raw(int client_fd, app_pkt_t *pkt)
-{
-	int send_ret = 0;
-	int pkt_size = 0;
-
-	if (client_fd == -1 || pkt == NULL) {
-		_E("arguments error!");
-		return -1;
-	}
-
-	pkt_size = sizeof(pkt->cmd) + sizeof(pkt->len) + pkt->len;
-
-	send_ret = send(client_fd, pkt, pkt_size, 0);
-	_D("send(%d) : %d / %d", client_fd, send_ret, pkt_size);
-
-	if (send_ret == -1) {
-		_E("send error!");
-		return -1;
-	} else if (send_ret != pkt_size) {
-		_E("send byte fail!");
-		return -1;
-	}
-
-	return 0;
 }
 
 static char *__appinfo_get_app_path(appinfo_t *appinfo)

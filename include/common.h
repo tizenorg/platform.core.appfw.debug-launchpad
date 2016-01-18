@@ -43,6 +43,7 @@
 typedef struct _app_pkt_t {
 	int cmd;
 	int len;
+	int opt;
 	unsigned char data[1];
 } app_pkt_t;
 
@@ -61,7 +62,6 @@ struct ucred;
 
 int _create_server_sock(void);
 app_pkt_t *_recv_pkt_raw(int fd, int *clifd, struct ucred *cr);
-int _send_pkt_raw(int client_fd, app_pkt_t *pkt);
 
 appinfo_t *_appinfo_create(bundle *kb);
 void _appinfo_free(appinfo_t *appinfo);
