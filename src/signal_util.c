@@ -22,8 +22,7 @@
 #include <sys/signalfd.h>
 #include <dirent.h>
 #include <glib.h>
-#include <dbus/dbus.h>
-#include <dbus/dbus-glib-lowlevel.h>
+#include <gio/gio.h>
 
 #include "defs.h"
 #include "common.h"
@@ -36,7 +35,7 @@
 #define AUL_DBUS_APPDEAD_SIGNAL "app_dead"
 #define AUL_DBUS_APPLAUNCH_SIGNAL "app_launch"
 
-static DBusConnection *bus = NULL;
+static GDBusConnection *bus = NULL;
 static sigset_t oldmask;
 
 static void __socket_garbage_collector(void)
@@ -68,73 +67,72 @@ static void __socket_garbage_collector(void)
 
 int _send_app_dead_signal(int dead_pid)
 {
-	DBusMessage *message;
+	GError *err = NULL;
 
 	if (bus == NULL)
 		return -1;
 
-	message = dbus_message_new_signal(AUL_DBUS_PATH,
-			AUL_DBUS_SIGNAL_INTERFACE,
-			AUL_DBUS_APPDEAD_SIGNAL);
-
-	if (dbus_message_append_args(message,
-				DBUS_TYPE_UINT32, &dead_pid,
-				DBUS_TYPE_INVALID) == FALSE) {
-		_E("Failed to load data error");
+	if (g_dbus_connection_emit_signal(bus,
+					NULL,
+					AUL_DBUS_PATH,
+					AUL_DBUS_SIGNAL_INTERFACE,
+					AUL_DBUS_APPDEAD_SIGNAL,
+					g_variant_new("(u)", dead_pid),
+					&err) == FALSE) {
+		_E("g_dbus_connection_emit_signal() is failed: %s",
+					err->message);
+		g_error_free(err);
 		return -1;
 	}
 
-	if (dbus_connection_send(bus, message, NULL) == FALSE) {
-		_E("dbus send error");
+	if (g_dbus_connection_flush_sync(bus, NULL, &err) == FALSE) {
+		_E("g_dbus_connection_flush_sync() is failed: %s",
+					err->message);
+		g_error_free(err);
 		return -1;
 	}
 
-	dbus_connection_flush(bus);
-	dbus_message_unref(message);
-
-	_D("send dead signal done\n");
+	_D("send dead signal done (pid: %d)", dead_pid);
 
 	return 0;
 }
 
 int _send_app_launch_signal(int launch_pid, const char *app_id)
 {
-	DBusMessage *message;
+	GError *err = NULL;
 
 	if (bus == NULL)
 		return -1;
 
-	message = dbus_message_new_signal(AUL_DBUS_PATH,
-			AUL_DBUS_SIGNAL_INTERFACE,
-			AUL_DBUS_APPLAUNCH_SIGNAL);
-
-	if (dbus_message_append_args(message,
-				DBUS_TYPE_UINT32, &launch_pid,
-				DBUS_TYPE_STRING, &app_id,
-				DBUS_TYPE_INVALID) == FALSE) {
-		_E("Failed to load data error");
+	if (g_dbus_connection_emit_signal(bus,
+					NULL,
+					AUL_DBUS_PATH,
+					AUL_DBUS_SIGNAL_INTERFACE,
+					AUL_DBUS_APPLAUNCH_SIGNAL,
+					g_variant_new("(us)", launch_pid, app_id),
+					&err) == FALSE) {
+		_E("g_dbus_connection_emit_signal() is failed: %s",
+					err->message);
+		g_error_free(err);
 		return -1;
 	}
 
-	if (dbus_connection_send(bus, message, NULL) == FALSE) {
-		_E("dbus send error");
+	if (g_dbus_connection_flush_sync(bus, NULL, &err) == FALSE) {
+		_E("g_dbus_connection_flush_sync() is failed: %s",
+					err->message);
+		g_error_free(err);
 		return -1;
 	}
 
-	dbus_connection_flush(bus);
-	dbus_message_unref(message);
-
-	_D("send launch signal done\n");
+	_D("send launch signal done (pid: %d, app_id: %s)", launch_pid, app_id);
 
 	return 0;
 }
 
-static int __sigchild_action(void *data)
+static int __sigchild_action(pid_t dead_pid)
 {
-	pid_t dead_pid;
 	char buf[MAX_LOCAL_BUFSZ];
 
-	dead_pid = (pid_t)(intptr_t)data;
 	if (dead_pid <= 0)
 		return -1;
 
@@ -148,7 +146,8 @@ static int __sigchild_action(void *data)
 
 	_send_app_dead_signal(dead_pid);
 
-	snprintf(buf, MAX_LOCAL_BUFSZ, "%s/%d/%d", SOCKET_PATH, getuid(), dead_pid);
+	snprintf(buf, MAX_LOCAL_BUFSZ, "%s/%d/%d",
+				SOCKET_PATH, getuid(), dead_pid);
 	unlink(buf);
 
 	__socket_garbage_collector();
@@ -168,21 +167,19 @@ void _debug_launchpad_sigchld(struct signalfd_siginfo *info)
 	while ((child_pid = waitpid(-1, &status, WNOHANG)) > 0) {
 		if (child_pid == child_pgid)
 			killpg(child_pgid, SIGKILL);
-		__sigchild_action((void *)(intptr_t)child_pid);
+		__sigchild_action(child_pid);
 	}
 }
 
 int _signal_init(void)
 {
 	int i;
-	DBusError error;
+	GError *error = NULL;
 
-	dbus_error_init(&error);
-	dbus_threads_init_default();
-	bus = dbus_bus_get_private(DBUS_BUS_SESSION, &error);
+	bus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
 	if (!bus) {
-		_E("Failed to connect to the D-BUS daemon: %s", error.message);
-		dbus_error_free(&error);
+		_E("Failed to connect to the D-BUS daemon: %s", error->message);
+		g_error_free(error);
 		return -1;
 	}
 
@@ -243,7 +240,7 @@ int _signal_fini(void)
 	int i;
 
 	if (bus)
-		dbus_connection_close(bus);
+		g_object_unref(bus);
 
 #ifndef PRELOAD_ACTIVATE
 	for (i = 0; i < _NSIG; i++)
