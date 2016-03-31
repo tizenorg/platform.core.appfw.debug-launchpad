@@ -45,9 +45,9 @@
 #define DLP_K_UNIT_TEST_ARG "__DLP_UNIT_TEST_ARG__"
 #define DLP_K_VALGRIND_ARG "__DLP_VALGRIND_ARG__"
 #define DLP_K_ATTACH_ARG "__DLP_ATTACH_ARG__"
+#define DLP_K_GDBSERVER_PATH "__DLP_GDBSERVER_PATH__"
+#define DLP_K_VALGRIND_PATH "__DLP_VALGRIND_PATH__"
 
-#define PATH_GDBSERVER "/home/developer/sdk_tools/gdbserver/gdbserver"
-#define PATH_VALGRIND "/home/developer/sdk_tools/valgrind/usr/bin/valgrind"
 #define PATH_DA_SO "/home/developer/sdk_tools/da/da_probe.so"
 
 #define OPT_VALGRIND_LOGFILE_FIXED "--log-file=/tmp/valgrind_result.txt"
