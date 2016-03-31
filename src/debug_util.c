@@ -101,9 +101,10 @@ static int __check_pkginfo(const char *appid)
 	return 0;
 }
 
-static int __prepare_gdbserver(const char *appid)
+static int __prepare_gdbserver(bundle *kb, const char *appid)
 {
 	int r;
+	const char *path;
 
 	r = __check_pkginfo(appid);
 	if (r < 0)
@@ -119,11 +120,15 @@ static int __prepare_gdbserver(const char *appid)
 	if (_apply_smack_rules(LABEL_NETWORK, appid, "w"))
 		_E("Failed to apply smack rule %s %s w", LABEL_NETWORK, appid);
 
-	r = dlp_chmod(PATH_GDBSERVER, S_IRUSR | S_IWUSR
+	path = bundle_get_val(kb, DLP_K_GDBSERVER_PATH);
+	if (path == NULL)
+		return -1;
+
+	r = dlp_chmod(path, S_IRUSR | S_IWUSR
 			| S_IXUSR | S_IRGRP | S_IXGRP
 			| S_IROTH | S_IXOTH, 1);
 	if (r != 0)
-		_W("Failed to set 755: %s", PATH_GDBSERVER);
+		_W("Failed to set 755: %s", path);
 
 	gdbserver = true;
 
@@ -137,9 +142,11 @@ static int __prepare_valgrind(bundle *kb)
 	int len = 0;
 	int i;
 
-	if (bundle_get_type(kb, DLP_K_VALGRIND_ARG) & BUNDLE_TYPE_ARRAY)
+	if (bundle_get_type(kb, DLP_K_VALGRIND_ARG) & BUNDLE_TYPE_ARRAY) {
 		str_arr = bundle_get_str_array(kb, DLP_K_VALGRIND_ARG, &len);
-	else {
+		if (str_arr == NULL)
+			return -1;
+	} else {
 		str = bundle_get_val(kb, DLP_K_VALGRIND_ARG);
 		if (str) {
 			str_arr = &str;
@@ -200,7 +207,7 @@ int _prepare_debug_tool(bundle *kb, const char *appid,
 
 		if (strncmp(str_arr[i], SDK_DEBUG, strlen(SDK_DEBUG)) == 0
 			|| strncmp(str_arr[i], SDK_ATTACH, strlen(SDK_ATTACH)) == 0) {
-			if (__prepare_gdbserver(appid) < 0)
+			if (__prepare_gdbserver(kb, appid) < 0)
 				return -1;
 		} else if (strncmp(str_arr[i], SDK_VALGRIND, strlen(SDK_VALGRIND)) == 0) {
 			__prepare_valgrind(kb);
