@@ -38,16 +38,6 @@
 #include "defs.h"
 
 #define MAX_PATH_LEN 1024
-#define BINSH_NAME "/bin/sh"
-#define BINSH_SIZE 7
-#define VALGRIND_NAME "/home/developer/sdk_tools/valgrind/usr/bin/valgrind"
-#define VALGRIND_SIZE 51
-#define BASH_NAME "/bin/bash"
-#define BASH_SIZE 9
-#define OPROFILE_NAME "/usr/bin/oprofile_command"
-#define OPROFILE_SIZE 25
-#define OPTION_VALGRIND_NAME "valgrind"
-#define OPTION_VALGRIND_SIZE 8
 #define MAX_CMD_BUFSZ 1024
 #define PATH_TMP "/tmp"
 #define PATH_DATA "/data"
@@ -523,9 +513,9 @@ static char **__add_arg(bundle * kb, char **argv, int *margc, const char *key)
 	int i;
 	char **new_argv = NULL;
 
-	if (bundle_get_type(kb, key) & BUNDLE_TYPE_ARRAY)
+	if (bundle_get_type(kb, key) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, key, &len);
-	else {
+	} else {
 		str = bundle_get_val(kb, key);
 		if (str) {
 			str_array = &str;
@@ -535,7 +525,7 @@ static char **__add_arg(bundle * kb, char **argv, int *margc, const char *key)
 
 	if (str_array) {
 		if (strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0
-				|| strncmp(key, DLP_K_VALGRIND_ARG, strlen(key)) == 0) {
+			|| strncmp(key, DLP_K_VALGRIND_ARG, strlen(key)) == 0) {
 			new_argv = (char **)realloc(argv,
 					sizeof(char *) * (*margc + len + 2));
 			if (new_argv == NULL) {
@@ -579,7 +569,7 @@ static char **__add_arg(bundle * kb, char **argv, int *margc, const char *key)
 		*margc += len;
 	} else {
 		if (strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0
-				|| strncmp(key, DLP_K_VALGRIND_ARG, strlen(key)) == 0) {
+			|| strncmp(key, DLP_K_VALGRIND_ARG, strlen(key)) == 0) {
 			new_argv = (char **)realloc(argv,
 					sizeof(char *) * (*margc + 2));
 			if (new_argv == NULL) {
@@ -611,18 +601,19 @@ char **_create_argc_argv(bundle *kb, int *margc, const char *app_path)
 	const char *str;
 	const char **str_array = NULL;
 	int len = 0;
+	const char *path;
 
 	argc = bundle_export_to_argv(kb, &argv);
-	if (argv)
+	if (argv) {
 		argv[0] = strdup(app_path);
-	else {
+	} else {
 		_E("bundle_export_to_argv() is failed.");
 		return NULL;
 	}
 
-	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY)
+	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
-	else {
+	} else {
 		str = bundle_get_val(kb, AUL_K_SDK);
 		if (str) {
 			str_array = &str;
@@ -646,18 +637,40 @@ char **_create_argc_argv(bundle *kb, int *margc, const char *app_path)
 				argv[0] = strdup(buf);
 
 			new_argv = __add_arg(kb, argv, &argc, DLP_K_DEBUG_ARG);
-			new_argv[0] = strdup(PATH_GDBSERVER);
+
+			path = bundle_get_val(kb, DLP_K_GDBSERVER_PATH);
+			if (path) {
+				_D("gdbserver path: %s", path);
+				new_argv[0] = strdup(path);
+			} else {
+				_E("Failed to get gdbserver path");
+				return NULL;
+			}
 			argv = new_argv;
 		} else if (strncmp(str_array[i], SDK_VALGRIND, strlen(str_array[i])) == 0) {
 			new_argv = __add_arg(kb, argv, &argc, DLP_K_VALGRIND_ARG);
-			new_argv[0] = strdup(PATH_VALGRIND);
+			path = bundle_get_val(kb, DLP_K_VALGRIND_PATH);
+			if (path) {
+				_D("valgrind path: %s", path);
+				new_argv[0] = strdup(path);
+			} else {
+				_E("Failed to get valgrind path");
+				return NULL;
+			}
 			argv = new_argv;
 		} else if (strncmp(str_array[i], SDK_UNIT_TEST, strlen(str_array[i])) == 0) {
 			new_argv = __add_arg(kb, argv, &argc, DLP_K_UNIT_TEST_ARG);
 			argv = new_argv;
 		} else if (strncmp(str_array[i], SDK_ATTACH, strlen(str_array[i])) == 0) {
 			new_argv = __add_arg(kb, argv, &argc, DLP_K_ATTACH_ARG);
-			new_argv[0] = strdup(PATH_GDBSERVER);
+			path = bundle_get_val(kb, DLP_K_GDBSERVER_PATH);
+			if (path) {
+				_D("gdbserver path: %s", path);
+				new_argv[0] = strdup(path);
+			} else {
+				_E("Failed to get gdbserver path");
+				return NULL;
+			}
 			argv = new_argv;
 		}
 
@@ -684,53 +697,26 @@ static int __read_proc(const char *path, char *buf, int size)
 	if (ret <= 0) {
 		close(fd);
 		return -1;
-	} else
+	} else {
 		buf[ret] = 0;
+	}
 
 	close(fd);
 
 	return ret;
 }
 
-char *_proc_get_cmdline_bypid(int pid)
+int _proc_check_cmdline_bypid(int pid)
 {
 	char buf[MAX_CMD_BUFSZ];
 	int ret;
-	char* ptr = NULL;
 
 	snprintf(buf, sizeof(buf), "/proc/%d/cmdline", pid);
 	ret = __read_proc(buf, buf, sizeof(buf));
 	if (ret <= 0)
-		return NULL;
+		return -1;
 
-	/* support app launched by shell script*/
-	if (strncmp(buf, BINSH_NAME, BINSH_SIZE) == 0)
-		return strdup(&buf[BINSH_SIZE + 1]);
-	else if (strncmp(buf, VALGRIND_NAME, VALGRIND_SIZE) == 0) {
-		/* buf comes with double null-terminated string */
-		while (1) {
-			while (*ptr)
-				ptr++;
-			ptr++;
+	_D("cmdline: %s", buf);
 
-			if (!(*ptr))
-				break;
-
-			/* ignore trailing "--" */
-			if (strncmp(ptr, "-", 1) != 0)
-				break;
-		}
-
-		return strdup(ptr);
-	} else if (strncmp(buf, BASH_NAME, BASH_SIZE) == 0) {
-		if (strncmp(&buf[BASH_SIZE + 1], OPROFILE_NAME, OPROFILE_SIZE) == 0) {
-			if (strncmp(&buf[BASH_SIZE + OPROFILE_SIZE + 2],
-						OPTION_VALGRIND_NAME, OPTION_VALGRIND_SIZE) == 0) {
-				return strdup(&buf[BASH_SIZE + OPROFILE_SIZE +
-						OPTION_VALGRIND_SIZE + 3]);
-			}
-		}
-	}
-
-	return strdup(buf);
+	return 0;
 }

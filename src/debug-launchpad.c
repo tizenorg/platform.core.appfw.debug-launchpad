@@ -61,9 +61,9 @@ static int __real_send(int clifd, int ret)
 	return 0;
 }
 
-static void __send_result_to_caller(int clifd, int ret, const char* app_path)
+static void __send_result_to_caller(int clifd, int ret)
 {
-	char *cmdline;
+	int res;
 
 	_W("Check app launching");
 
@@ -76,8 +76,8 @@ static void __send_result_to_caller(int clifd, int ret, const char* app_path)
 		return;
 	}
 
-	cmdline = _proc_get_cmdline_bypid(ret);
-	if (cmdline == NULL) {
+	res = _proc_check_cmdline_bypid(ret);
+	if (res < 0) {
 		_E("The app process might be terminated while we are wating %d", ret);
 		__real_send(clifd, -1); /* abnormally launched */
 		return;
@@ -141,13 +141,15 @@ static int __prepare_exec(const char *appid, const char *app_path,
 
 static int __prepare_fork(bundle *kb, const char *appid)
 {
-	const char *str = NULL;
+	const char *str;
 	const char **str_array = NULL;
 	int len = 0;
 
-	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY)
+	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
-	else {
+		if (str_array == NULL)
+			return -1;
+	} else {
 		str = bundle_get_val(kb, AUL_K_SDK);
 		if (str) {
 			str_array = &str;
@@ -240,9 +242,6 @@ static void __real_launch(const char *app_path, bundle *kb)
 		_D("input argument %d : %s##", i, app_argv[i]);
 
 	PERF("setup argument done");
-
-	/* Temporary log: launch time checking */
-	LOG(LOG_DEBUG, "LAUNCH", "[%s:Platform:launchpad:done]", app_path);
 
 	__normal_fork_exec(app_argc, app_argv);
 }
@@ -380,7 +379,7 @@ static gboolean __handle_launch_event(gpointer data)
 	pid = __start_process(appinfo->appid, app_path, kb, appinfo);
 
 end:
-	__send_result_to_caller(clifd, pid, app_path);
+	__send_result_to_caller(clifd, pid);
 
 	if (pid > 0)
 		_send_app_launch_signal(pid, appinfo->appid);
@@ -539,3 +538,4 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+
