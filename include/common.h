@@ -70,6 +70,6 @@ void _modify_bundle(bundle *kb, int caller_pid, appinfo_t *appinfo, int cmd);
 void _set_env(appinfo_t *app_info, bundle *kb);
 char **_create_argc_argv(bundle *kb, int *margc, const char *app_path);
 
-char *_proc_get_cmdline_bypid(int pid);
+int _proc_check_cmdline_bypid(int pid);
 
 #endif /* __COMMON_H__ */
