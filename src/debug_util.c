@@ -66,7 +66,7 @@ static int __check_pkginfo(const char *appid)
 	char *storeclientid = NULL;
 	pkgmgrinfo_pkginfo_h handle;
 
-	r = pkgmgrinfo_pkginfo_get_pkginfo(appid, &handle);
+	r = pkgmgrinfo_pkginfo_get_usr_pkginfo(appid, getuid(), &handle);
 	if (r != PMINFO_R_OK) {
 		_E("Failed to get pkginfo: %s", appid);
 		return -1;
@@ -101,29 +101,24 @@ static int __check_pkginfo(const char *appid)
 	return 0;
 }
 
-static int __prepare_gdbserver(const char *appid)
+static int __prepare_gdbserver(bundle *kb, const char *appid)
 {
 	int r;
+	const char *path;
 
 	r = __check_pkginfo(appid);
 	if (r < 0)
 		return -1;
 
-	if (_apply_smack_rules(LABEL_SDBD, appid, "w"))
-		_E("Failed to apply smack rule %s %s w", LABEL_SDBD, appid);
+	path = bundle_get_val(kb, DLP_K_GDBSERVER_PATH);
+	if (path == NULL)
+		return -1;
 
-	/* fixed debug-as fail issue (grant permission to use 10.0.2.2, 10.0.2.16) */
-	if (_apply_smack_rules(appid, LABEL_NETWORK, "rw"))
-		_E("Failed to apply smack rule %s %s rw", appid, LABEL_NETWORK);
-
-	if (_apply_smack_rules(LABEL_NETWORK, appid, "w"))
-		_E("Failed to apply smack rule %s %s w", LABEL_NETWORK, appid);
-
-	r = dlp_chmod(PATH_GDBSERVER, S_IRUSR | S_IWUSR
+	r = dlp_chmod(path, S_IRUSR | S_IWUSR
 			| S_IXUSR | S_IRGRP | S_IXGRP
 			| S_IROTH | S_IXOTH, 1);
 	if (r != 0)
-		_W("Failed to set 755: %s", PATH_GDBSERVER);
+		_W("Failed to set 755: %s", path);
 
 	gdbserver = true;
 
@@ -137,9 +132,11 @@ static int __prepare_valgrind(bundle *kb)
 	int len = 0;
 	int i;
 
-	if (bundle_get_type(kb, DLP_K_VALGRIND_ARG) & BUNDLE_TYPE_ARRAY)
+	if (bundle_get_type(kb, DLP_K_VALGRIND_ARG) & BUNDLE_TYPE_ARRAY) {
 		str_arr = bundle_get_str_array(kb, DLP_K_VALGRIND_ARG, &len);
-	else {
+		if (str_arr == NULL)
+			return -1;
+	} else {
 		str = bundle_get_val(kb, DLP_K_VALGRIND_ARG);
 		if (str) {
 			str_arr = &str;
@@ -200,7 +197,7 @@ int _prepare_debug_tool(bundle *kb, const char *appid,
 
 		if (strncmp(str_arr[i], SDK_DEBUG, strlen(SDK_DEBUG)) == 0
 			|| strncmp(str_arr[i], SDK_ATTACH, strlen(SDK_ATTACH)) == 0) {
-			if (__prepare_gdbserver(appid) < 0)
+			if (__prepare_gdbserver(kb, appid) < 0)
 				return -1;
 		} else if (strncmp(str_arr[i], SDK_VALGRIND, strlen(SDK_VALGRIND)) == 0) {
 			__prepare_valgrind(kb);
