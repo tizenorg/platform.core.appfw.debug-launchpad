@@ -141,13 +141,15 @@ static int __prepare_exec(const char *appid, const char *app_path,
 
 static int __prepare_fork(bundle *kb, const char *appid)
 {
-	const char *str = NULL;
+	const char *str;
 	const char **str_array = NULL;
 	int len = 0;
 
-	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY)
+	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
-	else {
+		if (str_array == NULL)
+			return -1;
+	} else {
 		str = bundle_get_val(kb, AUL_K_SDK);
 		if (str) {
 			str_array = &str;
@@ -240,9 +242,6 @@ static void __real_launch(const char *app_path, bundle *kb)
 		_D("input argument %d : %s##", i, app_argv[i]);
 
 	PERF("setup argument done");
-
-	/* Temporary log: launch time checking */
-	LOG(LOG_DEBUG, "LAUNCH", "[%s:Platform:launchpad:done]", app_path);
 
 	__normal_fork_exec(app_argc, app_argv);
 }
@@ -539,3 +538,4 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+
