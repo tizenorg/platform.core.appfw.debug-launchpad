@@ -97,21 +97,17 @@ static int __prepare_exec(const char *appid, const char *app_path,
 	char *file_name;
 	char process_name[AUL_PR_NAME];
 	int ret;
-	const char *value;
 
 	/* Set new session ID & new process group ID */
 	/* In linux, child can set new session ID without check permission */
 	setsid();
 
 	/* SET PRIVILEGES */
-	value = bundle_get_val(kb, AUL_K_SDK);
-	if (value && strncmp(value, SDK_ATTACH, strlen(SDK_ATTACH) != 0)) {
-		_D("appid: %s / pkg_type: %s / app_path: %s",
-				appid, appinfo->pkg_type, app_path);
-		if ((ret = _set_access(appid)) != 0) {
-			_E("Failed to set privileges - check your package's credential: %d", ret);
-			return -1;
-		}
+	_D("appid: %s / pkg_type: %s / app_path: %s",
+			appid, appinfo->pkg_type, app_path);
+	if ((ret = _set_access(appid)) != 0) {
+		_E("Failed to set privileges - check your package's credential: %d", ret);
+		return -1;
 	}
 
 	/* SET DUMPABLE - for coredump */
