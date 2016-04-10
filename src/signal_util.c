@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 - 2016 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,12 +73,12 @@ int _send_app_dead_signal(int dead_pid)
 		return -1;
 
 	if (g_dbus_connection_emit_signal(bus,
-					NULL,
-					AUL_DBUS_PATH,
-					AUL_DBUS_SIGNAL_INTERFACE,
-					AUL_DBUS_APPDEAD_SIGNAL,
-					g_variant_new("(u)", dead_pid),
-					&err) == FALSE) {
+				NULL,
+				AUL_DBUS_PATH,
+				AUL_DBUS_SIGNAL_INTERFACE,
+				AUL_DBUS_APPDEAD_SIGNAL,
+				g_variant_new("(u)", dead_pid),
+				&err) == FALSE) {
 		_E("g_dbus_connection_emit_signal() is failed: %s",
 					err->message);
 		g_error_free(err);
@@ -105,14 +105,14 @@ int _send_app_launch_signal(int launch_pid, const char *app_id)
 		return -1;
 
 	if (g_dbus_connection_emit_signal(bus,
-					NULL,
-					AUL_DBUS_PATH,
-					AUL_DBUS_SIGNAL_INTERFACE,
-					AUL_DBUS_APPLAUNCH_SIGNAL,
-					g_variant_new("(us)", launch_pid, app_id),
-					&err) == FALSE) {
+				NULL,
+				AUL_DBUS_PATH,
+				AUL_DBUS_SIGNAL_INTERFACE,
+				AUL_DBUS_APPLAUNCH_SIGNAL,
+				g_variant_new("(us)", launch_pid, app_id),
+				&err) == FALSE) {
 		_E("g_dbus_connection_emit_signal() is failed: %s",
-					err->message);
+				err->message);
 		g_error_free(err);
 		return -1;
 	}
@@ -248,3 +248,4 @@ int _signal_fini(void)
 #endif
 	return 0;
 }
+

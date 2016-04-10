@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 - 2016 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -431,7 +431,8 @@ void _modify_bundle(bundle *kb, int caller_pid, appinfo_t *appinfo, int cmd)
 					break;
 				ptr += flag;
 
-				flag = __parse_app_path(ptr, value, sizeof(value));
+				flag = __parse_app_path(ptr, value,
+						sizeof(value));
 				if (flag < 0)
 					break;
 				ptr += flag;
@@ -625,7 +626,8 @@ char **_create_argc_argv(bundle *kb, int *margc, const char *app_path)
 		if (str_array[i] == NULL)
 			break;
 
-		if (strncmp(str_array[i], SDK_DEBUG, strlen(str_array[i])) == 0) {
+		if (strncmp(str_array[i], SDK_DEBUG,
+					strlen(str_array[i])) == 0) {
 			if (argv[0])
 				free(argv[0]);
 			snprintf(buf, sizeof(buf), "%s.exe", app_path);
@@ -648,7 +650,8 @@ char **_create_argc_argv(bundle *kb, int *margc, const char *app_path)
 			new_argv = __add_arg(kb, argv, &argc, DLP_K_DEBUG_ARG);
 			new_argv[0] = strdup(path);
 			argv = new_argv;
-		} else if (strncmp(str_array[i], SDK_VALGRIND, strlen(str_array[i])) == 0) {
+		} else if (strncmp(str_array[i], SDK_VALGRIND,
+					strlen(str_array[i])) == 0) {
 			path = bundle_get_val(kb, DLP_K_VALGRIND_PATH);
 			if (path == NULL) {
 				_E("Failed to get valgrind path");
@@ -658,13 +661,17 @@ char **_create_argc_argv(bundle *kb, int *margc, const char *app_path)
 				*margc = 0;
 				return NULL;
 			}
-			new_argv = __add_arg(kb, argv, &argc, DLP_K_VALGRIND_ARG);
+			new_argv = __add_arg(kb, argv, &argc,
+					DLP_K_VALGRIND_ARG);
 			new_argv[0] = strdup(path);
 			argv = new_argv;
-		} else if (strncmp(str_array[i], SDK_UNIT_TEST, strlen(str_array[i])) == 0) {
-			new_argv = __add_arg(kb, argv, &argc, DLP_K_UNIT_TEST_ARG);
+		} else if (strncmp(str_array[i], SDK_UNIT_TEST,
+					strlen(str_array[i])) == 0) {
+			new_argv = __add_arg(kb, argv, &argc,
+					DLP_K_UNIT_TEST_ARG);
 			argv = new_argv;
-		} else if (strncmp(str_array[i], SDK_ATTACH, strlen(str_array[i])) == 0) {
+		} else if (strncmp(str_array[i], SDK_ATTACH,
+					strlen(str_array[i])) == 0) {
 			path = bundle_get_val(kb, DLP_K_GDBSERVER_PATH);
 			if (path == NULL) {
 				_E("Failed to get gdbserver path");
@@ -725,3 +732,4 @@ int _proc_check_cmdline_bypid(int pid)
 
 	return 0;
 }
+

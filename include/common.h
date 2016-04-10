@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 - 2016 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,14 +62,12 @@ struct ucred;
 
 int _create_server_sock(void);
 app_pkt_t *_recv_pkt_raw(int fd, int *clifd, struct ucred *cr);
-
 appinfo_t *_appinfo_create(bundle *kb);
 void _appinfo_free(appinfo_t *appinfo);
 void _modify_bundle(bundle *kb, int caller_pid, appinfo_t *appinfo, int cmd);
-
 void _set_env(appinfo_t *app_info, bundle *kb);
 char **_create_argc_argv(bundle *kb, int *margc, const char *app_path);
-
 int _proc_check_cmdline_bypid(int pid);
 
 #endif /* __COMMON_H__ */
+

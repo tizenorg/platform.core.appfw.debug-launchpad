@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 - 2016 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,7 +78,8 @@ static void __send_result_to_caller(int clifd, int ret)
 
 	res = _proc_check_cmdline_bypid(ret);
 	if (res < 0) {
-		_E("The app process might be terminated while we are wating %d", ret);
+		_E("The app process might be terminated "
+				"while we are wating %d", ret);
 		__real_send(clifd, -1); /* abnormally launched */
 		return;
 	}
@@ -106,7 +107,8 @@ static int __prepare_exec(const char *appid, const char *app_path,
 	_D("appid: %s / pkg_type: %s / app_path: %s",
 			appid, appinfo->pkg_type, app_path);
 	if ((ret = _set_access(appid)) != 0) {
-		_E("Failed to set privileges - check your package's credential: %d", ret);
+		_E("Failed to set privileges "
+				"- check your package's credential: %d", ret);
 		return -1;
 	}
 
@@ -279,7 +281,8 @@ static int __start_process(const char *appid, const char *app_path,
 		_D("lock up test log(no error): prepare exec - first done");
 
 		if (__prepare_exec(appid, app_path, appinfo, kb) < 0) {
-			_E("preparing work fail to launch - can not launch %s", appid);
+			_E("preparing work fail to launch "
+					"- can not launch %s", appid);
 			exit(-1);
 		}
 
@@ -402,7 +405,8 @@ static gboolean __glib_check(GSource *src)
 	fd_list = src->poll_fds;
 	do {
 		tmp = (GPollFD *)fd_list->data;
-		if ((tmp->revents & (G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL)))
+		if ((tmp->revents &
+				(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL)))
 			return TRUE;
 		fd_list = fd_list->next;
 	} while (fd_list);
@@ -410,7 +414,8 @@ static gboolean __glib_check(GSource *src)
 	return FALSE;
 }
 
-static gboolean __glib_dispatch(GSource *src, GSourceFunc callback, gpointer data)
+static gboolean __glib_dispatch(GSource *src, GSourceFunc callback,
+		gpointer data)
 {
 	return callback(data);
 }

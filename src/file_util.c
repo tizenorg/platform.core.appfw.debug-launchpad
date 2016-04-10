@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 - 2016 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,8 @@ int dlp_chmod(const char *path, mode_t mode, int recursive)
 	struct stat lstat_info;
 	struct stat fstat_info;
 #ifdef HAVE_WIN32_PROC
-	fprintf(stderr, "error: dlp_chmod not implemented on Win32 (%s)\n", path);
+	fprintf(stderr, "error: dlp_chmod not implemented on Win32 (%s)\n",
+			path);
 	return -1;
 #else
 
@@ -91,3 +92,4 @@ int dlp_chmod(const char *path, mode_t mode, int recursive)
 	return 0;
 #endif
 }
+
