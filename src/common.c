@@ -672,20 +672,19 @@ char **_create_argc_argv(bundle *kb, int *margc, const char *app_path)
 			argv = new_argv;
 		} else if (strncmp(str_array[i], SDK_ATTACH,
 					strlen(str_array[i])) == 0) {
+			if (argv[0])
+				free(argv[0]);
+			bundle_free_exported_argv(argc, &argv);
+			*margc = 0;
 			path = bundle_get_val(kb, DLP_K_GDBSERVER_PATH);
 			if (path == NULL) {
 				_E("Failed to get gdbserver path");
-				if (argv[0])
-					free(argv[0]);
-				bundle_free_exported_argv(argc, &argv);
-				*margc = 0;
 				return NULL;
 			}
 			new_argv = __add_arg(kb, argv, &argc, DLP_K_ATTACH_ARG);
 			new_argv[0] = strdup(path);
 			argv = new_argv;
 		}
-
 	}
 
 	*margc = argc;
