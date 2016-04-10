@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 - 2016 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,8 @@
 
 #define OPT_VALGRIND_LOGFILE_FIXED "--log-file=/tmp/valgrind_result.txt"
 #define OPT_VALGRIND_XMLFILE_FIXED "--xml-file=/tmp/valgrind_result.xml"
-#define OPT_VALGRIND_MASSIFFILE_FIXED "--massif-out-file=/tmp/valgrind_result.xml"
+#define OPT_VALGRIND_MASSIFFILE_FIXED \
+	"--massif-out-file=/tmp/valgrind_result.xml"
 #define PATH_VALGRIND_LOGFILE "/tmp/valgrind_result.txt"
 #define PATH_VALGRIND_XMLFILE "/tmp/valgrind_result.xml"
 #define PATH_VALGRIND_MASSIFFILE PATH_VALGRIND_XMLFILE

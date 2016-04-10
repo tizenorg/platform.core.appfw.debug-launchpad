@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 - 2016 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -195,11 +195,13 @@ int _prepare_debug_tool(bundle *kb, const char *appid,
 		if (str_arr[i] == NULL)
 			break;
 
-		if (strncmp(str_arr[i], SDK_DEBUG, strlen(SDK_DEBUG)) == 0
-			|| strncmp(str_arr[i], SDK_ATTACH, strlen(SDK_ATTACH)) == 0) {
+		if (strncmp(str_arr[i], SDK_DEBUG, strlen(SDK_DEBUG)) == 0 ||
+				strncmp(str_arr[i], SDK_ATTACH,
+					strlen(SDK_ATTACH)) == 0) {
 			if (__prepare_gdbserver(kb, appid) < 0)
 				return -1;
-		} else if (strncmp(str_arr[i], SDK_VALGRIND, strlen(SDK_VALGRIND)) == 0) {
+		} else if (strncmp(str_arr[i], SDK_VALGRIND,
+					strlen(SDK_VALGRIND)) == 0) {
 			__prepare_valgrind(kb);
 		}
 	}
@@ -254,3 +256,4 @@ void _wait_for_valgrind_output(void)
 	if (valgrind_option)
 		_E("Failed to wait for valgrind output file");
 }
+

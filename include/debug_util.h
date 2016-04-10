@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 - 2016 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,11 +24,12 @@ bool _gdbserver_is_running(void);
 int _get_gdbserver_pid(void);
 int _get_gdbserver_app_pid(void);
 int _get_valgrind_option(void);
-int _prepare_debug_tool(bundle *kb, const char *appid,
-		const char **str_arr, int len);
+int _prepare_debug_tool(bundle *kb, const char *appid, const char **str_arr,
+		int len);
 void _change_file(const char *path);
 void _wait_for_valgrind_output(void);
 void _set_env(appinfo_t *app_info, bundle *kb);
 char **_create_argc_argv(bundle *kb, int *margc, const char *app_path);
 
 #endif /* __DEBUG_UTIL_H__ */
+

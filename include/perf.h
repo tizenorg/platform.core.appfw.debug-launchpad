@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2015 - 2016 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,9 +46,11 @@ static struct timeval __g_base_time = {
 		gettimeofday(&cur, NULL); \
 		if (__g_base_time.tv_sec != 0) { \
 			timersub(&cur, &__g_base_time, &res); \
-			printf("%c[1;31m[%s,%d] %ld sec %ld msec "fmt" %c[0m\n", \
+			printf("%c[1;31m[%s,%d] %ld sec %ld msec "fmt \
+					" %c[0m\n", \
 					27, __FUNCTION__, __LINE__, \
-					res.tv_sec, res.tv_usec/1000, ##arg, 27); \
+					res.tv_sec, res.tv_usec/1000, \
+					##arg, 27); \
 		} \
 	} while (0)
 #else
@@ -57,3 +59,4 @@ static struct timeval __g_base_time = {
 #endif
 
 #endif /* __PERF_H__ */
+
