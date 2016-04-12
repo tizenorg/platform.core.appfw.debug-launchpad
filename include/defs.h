@@ -35,7 +35,6 @@
 
 #define SDK_CODE_COVERAGE "CODE_COVERAGE"
 #define SDK_DEBUG "DEBUG"
-#define SDK_DYNAMIC_ANALYSIS "DYNAMIC_ANALYSIS"
 #define SDK_UNIT_TEST "UNIT_TEST"
 #define SDK_VALGRIND "VALGRIND"
 #define SDK_ATTACH "ATTACH"
@@ -47,8 +46,6 @@
 #define DLP_K_ATTACH_ARG "__DLP_ATTACH_ARG__"
 #define DLP_K_GDBSERVER_PATH "__DLP_GDBSERVER_PATH__"
 #define DLP_K_VALGRIND_PATH "__DLP_VALGRIND_PATH__"
-
-#define PATH_DA_SO "/home/developer/sdk_tools/da/da_probe.so"
 
 #define OPT_VALGRIND_LOGFILE_FIXED "--log-file=/tmp/valgrind_result.txt"
 #define OPT_VALGRIND_XMLFILE_FIXED "--xml-file=/tmp/valgrind_result.xml"

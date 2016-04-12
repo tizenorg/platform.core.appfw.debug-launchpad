@@ -470,8 +470,6 @@ static void __set_sdk_env(const char *appid, const char *value)
 		snprintf(buf, sizeof(buf), PATH_TMP"/%s"PATH_DATA, token);
 		setenv("GCOV_PREFIX", buf, 1);
 		setenv("GCOV_PREFIX_STRIP", "0", 1);
-	} else if (strncmp(value, SDK_DYNAMIC_ANALYSIS, strlen(value)) == 0) {
-		setenv("LD_PRELOAD", PATH_DA_SO, 1);
 	}
 }
 
