@@ -449,6 +449,28 @@ void _modify_bundle(bundle *kb, int caller_pid, appinfo_t *appinfo, int cmd)
 	}
 }
 
+static char *__get_libdir(const char *path)
+{
+	char *path_dup;
+	char buf[PATH_MAX];
+	char *ptr;
+
+	path_dup = strdup(path);
+	if (path_dup == NULL)
+		return NULL;
+
+	ptr = strrchr(path_dup, '/');
+	*ptr = '\0';
+
+	snprintf(buf, sizeof(buf), "%s/../lib/", path_dup);
+	free(path_dup);
+
+	if (access(buf, F_OK) == -1)
+		return NULL;
+
+	return strdup(buf);
+}
+
 static void __set_sdk_env(const char *appid, const char *value)
 {
 	char buf[MAX_LOCAL_BUFSZ];
@@ -479,6 +501,7 @@ void _set_env(appinfo_t *appinfo, bundle *kb)
 	const char **str_array = NULL;
 	int len = 0;
 	int i;
+	char *libdir;
 
 	setenv("PKG_NAME", appinfo->appid, 1);
 
@@ -490,9 +513,27 @@ void _set_env(appinfo_t *appinfo, bundle *kb)
 	if (appinfo->taskmanage)
 		setenv("TASKMANAGE", appinfo->taskmanage, 1);
 
-	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY)
+	str = bundle_get_val(kb, AUL_K_WAYLAND_DISPLAY);
+	if (str)
+		setenv("WAYLAND_DISPLAY", str, 1);
+
+	str = bundle_get_val(kb, AUL_K_WAYLAND_WORKING_DIR);
+	if (str)
+		setenv("XDG_RUNTIME_DIR", str, 1);
+
+	str = bundle_get_val(kb, AUL_K_API_VERSION);
+	if (str)
+		setenv("TIZEN_API_VERSION", str, 1);
+
+	libdir = __get_libdir(appinfo->app_path);
+	if (libdir) {
+		setenv("LD_LIBRARY_PATH", libdir, 1);
+		free(libdir);
+	}
+
+	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
-	else {
+	} else {
 		str = bundle_get_val(kb, AUL_K_SDK);
 		if (str) {
 			str_array = &str;
