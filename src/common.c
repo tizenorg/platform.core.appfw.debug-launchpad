@@ -490,9 +490,21 @@ void _set_env(appinfo_t *appinfo, bundle *kb)
 	if (appinfo->taskmanage)
 		setenv("TASKMANAGE", appinfo->taskmanage, 1);
 
-	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY)
+	str = bundle_get_val(kb, AUL_K_WAYLAND_DISPLAY);
+	if (str)
+		setenv("WAYLAND_DISPLAY", str, 1);
+
+	str = bundle_get_val(kb, AUL_K_WAYLAND_WORKING_DIR);
+	if (str)
+		setenv("XDG_RUNTIME_DIR", str, 1);
+
+	str = bundle_get_val(kb, AUL_K_API_VERSION);
+	if (str)
+		setenv("TIZEN_API_VERSION", str, 1);
+
+	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
-	else {
+	} else {
 		str = bundle_get_val(kb, AUL_K_SDK);
 		if (str) {
 			str_array = &str;
