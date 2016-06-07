@@ -35,7 +35,7 @@
 #define AUL_DBUS_APPDEAD_SIGNAL "app_dead"
 #define AUL_DBUS_APPLAUNCH_SIGNAL "app_launch"
 
-static GDBusConnection *bus = NULL;
+static GDBusConnection *bus;
 static sigset_t oldmask;
 
 static void __socket_garbage_collector(void)

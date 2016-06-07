@@ -36,8 +36,8 @@
 
 static int gdbserver_pid = -1;
 static int gdbserver_app_pid = -1;
-static bool gdbserver = false;
-static int valgrind_option = 0;
+static bool gdbserver;
+static int valgrind_option;
 
 bool _gdbserver_is_running(void)
 {

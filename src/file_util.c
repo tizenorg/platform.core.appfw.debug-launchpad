@@ -29,6 +29,7 @@ static int recurse(const char *path, mode_t mode,
 {
 	struct stat st;
 	char dir[PATH_MAX];
+	int n;
 
 	if (path == NULL)
 		return -1;
@@ -37,7 +38,7 @@ static int recurse(const char *path, mode_t mode,
 		return -1;
 
 	if (strrchr(path, '/') != NULL) {
-		int n = strlen(path)-strlen(strrchr(path, '/'));
+		n = strlen(path) - strlen(strrchr(path, '/'));
 		if (n >= PATH_MAX)
 			return -1;
 

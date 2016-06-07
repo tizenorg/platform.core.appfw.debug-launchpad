@@ -88,8 +88,6 @@ static void __send_result_to_caller(int clifd, int ret)
 		if (kill(ret, SIGKILL) == -1)
 			_E("Failed to send SIGKILL: %d", errno);
 	}
-
-	return;
 }
 
 static int __prepare_exec(const char *appid, const char *app_path,
@@ -106,7 +104,8 @@ static int __prepare_exec(const char *appid, const char *app_path,
 	/* SET PRIVILEGES */
 	_D("appid: %s / pkg_type: %s / app_path: %s",
 			appid, appinfo->pkg_type, app_path);
-	if ((ret = _set_access(appid)) != 0) {
+	ret = _set_access(appid);
+	if (ret != 0) {
 		_E("Failed to set privileges "
 				"- check your package's credential: %d", ret);
 		return -1;

@@ -30,11 +30,15 @@ static struct timeval __g_base_time = {
 	do { \
 		const char *tmp; \
 		struct timeval tv; \
+		int ret; \
 		tmp = bundle_get_val(kb, AUL_K_STARTTIME); \
-		if (tmp != NULL) \
-			sscanf(tmp, "%ld/%ld", &tv.tv_sec, &tv.tv_usec); \
-		else \
+		if (tmp != NULL) { \
+			ret = sscanf(tmp, "%ld/%ld", &tv.tv_sec, &tv.tv_usec); \
+			if (ret != 2) \
+				printf("Failed to convert format\n"); \
+		} else { \
 			gettimeofday(&tv, NULL); \
+		} \
 		__g_base_time.tv_sec = tv.tv_sec; \
 		__g_base_time.tv_usec = tv.tv_usec; \
 	} while (0)
@@ -48,7 +52,7 @@ static struct timeval __g_base_time = {
 			timersub(&cur, &__g_base_time, &res); \
 			printf("%c[1;31m[%s,%d] %ld sec %ld msec " \
 					fmt" %c[0m\n", \
-					27, __FUNCTION__, __LINE__, \
+					27, __func__, __LINE__, \
 					res.tv_sec, res.tv_usec/1000, \
 					##arg, 27); \
 		} \

@@ -156,8 +156,9 @@ app_pkt_t *_recv_pkt_raw(int fd, int *clifd, struct ucred *cr)
 
 	sun_size = sizeof(struct sockaddr_un);
 
-	if ((*clifd = accept(fd, (struct sockaddr *)&aul_addr,
-					(socklen_t *)&sun_size)) == -1) {
+	*clifd = accept(fd, (struct sockaddr *)&aul_addr,
+			(socklen_t *)&sun_size);
+	if (*clifd == -1) {
 		if (errno != EINTR)
 			_E("accept error");
 		return NULL;
@@ -747,10 +748,9 @@ static int __read_proc(const char *path, char *buf, int size)
 	if (ret <= 0) {
 		close(fd);
 		return -1;
-	} else {
-		buf[ret] = 0;
 	}
 
+	buf[ret] = 0;
 	close(fd);
 
 	return ret;
