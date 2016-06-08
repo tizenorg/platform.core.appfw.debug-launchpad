@@ -34,7 +34,7 @@
 #define _D(fmt, arg...) LOGD(fmt, ##arg)
 #define _W(fmt, arg...) LOGW(fmt, ##arg)
 
-#define SOCKET_PATH "/run/user"
+#define SOCKET_PATH "/run/aul"
 #define MAX_LOCAL_BUFSZ 128
 #define AUL_SOCK_MAXBUFF 131071
 
@@ -61,6 +61,7 @@ typedef struct {
 struct ucred;
 
 int _create_server_sock(void);
+int _create_server_socket(int flag);
 app_pkt_t *_recv_pkt_raw(int fd, int *clifd, struct ucred *cr);
 appinfo_t *_appinfo_create(bundle *kb);
 void _appinfo_free(appinfo_t *appinfo);

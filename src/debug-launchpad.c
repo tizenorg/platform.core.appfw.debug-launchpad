@@ -96,10 +96,18 @@ static int __prepare_exec(const char *appid, const char *app_path,
 	char *file_name;
 	char process_name[AUL_PR_NAME];
 	int ret;
+	int fd;
+	char buf[AUL_PR_NAME];
 
 	/* Set new session ID & new process group ID */
 	/* In linux, child can set new session ID without check permission */
 	setsid();
+
+	fd = _create_server_socket(1);
+	if (fd > 0) {
+		snprintf(buf, sizeof(buf), "%d", fd);
+		setenv("AUL_LISTEN_SOCK", buf, 1);
+	}
 
 	/* SET PRIVILEGES */
 	_D("appid: %s / pkg_type: %s / app_path: %s",
