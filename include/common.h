@@ -34,7 +34,7 @@
 #define _D(fmt, arg...) LOGD(fmt, ##arg)
 #define _W(fmt, arg...) LOGW(fmt, ##arg)
 
-#define SOCKET_PATH "/run/user"
+#define SOCKET_PATH "/run/aul"
 #define MAX_LOCAL_BUFSZ 128
 #define AUL_SOCK_MAXBUFF 131071
 
@@ -68,6 +68,7 @@ void _modify_bundle(bundle *kb, int caller_pid, appinfo_t *appinfo, int cmd);
 void _set_env(appinfo_t *app_info, bundle *kb);
 char **_create_argc_argv(bundle *kb, int *margc, const char *app_path);
 int _proc_check_cmdline_bypid(int pid);
+void _prepare_listen_sock(void);
 
 #endif /* __COMMON_H__ */
 
