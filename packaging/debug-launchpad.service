@@ -3,4 +3,8 @@ Description=Start the debug preload/preinit daemon
 After=dbus.service ac.service
 
 [Service]
+ExecStartPre=-/usr/bin/mkdir -p /run/aul/daemons/%U
+ExecStartPre=-/usr/bin/chmod 0777 /run/aul/daemons/%U
+ExecStartPre=-/usr/bin/mkdir -p /run/aul/apps/%U
+ExecStartPre=-/usr/bin/chmod 0777 /run/aul/apps/%U
 ExecStart=/usr/bin/debug_launchpad_preloading_preinitializing_daemon

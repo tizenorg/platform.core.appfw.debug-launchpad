@@ -126,6 +126,8 @@ static int __prepare_exec(const char *appid, const char *app_path,
 		return -1;
 	}
 
+	_prepare_listen_sock();
+
 	memset(process_name, '\0', AUL_PR_NAME);
 	snprintf(process_name, AUL_PR_NAME, "%s", file_name);
 	prctl(PR_SET_NAME, process_name);
@@ -269,7 +271,7 @@ static int __start_process(const char *appid, const char *app_path,
 		for (iter_fd = 3; iter_fd <= max_fd; iter_fd++)
 			close(iter_fd);
 
-		snprintf(sock_path, sizeof(sock_path), "%s/%d/%d",
+		snprintf(sock_path, sizeof(sock_path), "%s/apps/%d/%d",
 				SOCKET_PATH, getuid(), getpid());
 		unlink(sock_path);
 

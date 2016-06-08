@@ -44,7 +44,7 @@ static void __socket_garbage_collector(void)
 	struct dirent *dentry;
 	char path[PATH_MAX];
 
-	snprintf(path, sizeof(path), "%s/%d", SOCKET_PATH, getuid());
+	snprintf(path, sizeof(path), "%s/apps/%d", SOCKET_PATH, getuid());
 	dp = opendir(path);
 	if (dp == NULL)
 		return;
@@ -55,7 +55,7 @@ static void __socket_garbage_collector(void)
 
 		snprintf(path, sizeof(path), "/proc/%s", dentry->d_name);
 		if (access(path, F_OK) != 0) { /* Flawfinder: ignore */
-			snprintf(path, sizeof(path), "%s/%d/%s",
+			snprintf(path, sizeof(path), "%s/apps/%d/%s",
 					SOCKET_PATH, getuid(), dentry->d_name);
 			unlink(path);
 			continue;
@@ -146,7 +146,7 @@ static int __sigchild_action(pid_t dead_pid)
 
 	_send_app_dead_signal(dead_pid);
 
-	snprintf(buf, MAX_LOCAL_BUFSZ, "%s/%d/%d",
+	snprintf(buf, MAX_LOCAL_BUFSZ, "%s/apps/%d/%d",
 				SOCKET_PATH, getuid(), dead_pid);
 	unlink(buf);
 
