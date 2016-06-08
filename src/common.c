@@ -72,12 +72,15 @@ static int __create_sock_activation(void)
 }
 #endif /* _APPFW_FEATURE_SOCKET_ACTIVATION */
 
-static int __create_server_socket(void)
+static int __create_server_socket(int flag)
 {
 	struct sockaddr_un saddr;
 	int fd;
 
-	fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (flag)
+		fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	else
+		fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	/* support above version 2.6.27 */
 	if (fd < 0) {
 		if (errno == EINVAL) {
@@ -94,9 +97,16 @@ static int __create_server_socket(void)
 
 	memset(&saddr, 0, sizeof(saddr));
 	saddr.sun_family = AF_UNIX;
-	snprintf(saddr.sun_path, sizeof(saddr.sun_path),
-			"%s/%d/.debug-launchpad-sock",
-			SOCKET_PATH, getuid());
+
+	if (flag) {
+		snprintf(saddr.sun_path, sizeof(saddr.sun_path),
+				"%s/%d/%d",
+				SOCKET_PATH, getuid(), getpid());
+	} else {
+		snprintf(saddr.sun_path, sizeof(saddr.sun_path),
+				"%s/%d/.debug-launchpad-sock",
+				SOCKET_PATH, getuid());
+	}
 	unlink(saddr.sun_path);
 
 	if (bind(fd, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
@@ -131,7 +141,7 @@ int _create_server_sock(void)
 	fd = __create_sock_activation();
 #endif /* _APPFW_FEATURE_SOCKET_ACTIAVTION */
 	if (fd < 0) {
-		fd = __create_server_socket();
+		fd = __create_server_socket(0);
 		if (fd < 0) {
 			_E("server sock error %d", fd);
 			return -1;
@@ -769,5 +779,18 @@ int _proc_check_cmdline_bypid(int pid)
 	_D("cmdline: %s", buf);
 
 	return 0;
+}
+
+void _prepare_listen_sock(void)
+{
+	int fd;
+	char buf[12];
+
+	fd = __create_server_socket(1);
+	if (fd < 0)
+		return;
+
+	snprintf(buf, sizeof(buf), "%d", fd);
+	setenv("AUL_LISTEN_SOCK", buf, 1);
 }
 

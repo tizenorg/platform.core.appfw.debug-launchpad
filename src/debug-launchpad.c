@@ -101,6 +101,8 @@ static int __prepare_exec(const char *appid, const char *app_path,
 	/* In linux, child can set new session ID without check permission */
 	setsid();
 
+	_prepare_listen_sock();
+
 	/* SET PRIVILEGES */
 	_D("appid: %s / pkg_type: %s / app_path: %s",
 			appid, appinfo->pkg_type, app_path);

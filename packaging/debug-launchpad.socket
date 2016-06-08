@@ -2,7 +2,7 @@
 Description=The debug preload/preinit daemon Socket
 
 [Socket]
-ListenStream=/run/user/%U/.debug-launchpad-sock
+ListenStream=/run/aul/%U/.debug-launchpad-sock
 DirectoryMode=0777
 
 [Install]
