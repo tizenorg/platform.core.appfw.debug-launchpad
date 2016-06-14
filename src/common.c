@@ -288,6 +288,10 @@ appinfo_t *_appinfo_create(bundle *kb)
 		return NULL;
 	}
 
+	ptr = bundle_get_val(kb, AUL_K_ROOT_PATH);
+	if (ptr)
+		appinfo->root_path = strdup(ptr);
+
 	return appinfo;
 }
 
@@ -513,6 +517,8 @@ void _set_env(appinfo_t *appinfo, bundle *kb)
 		setenv("HWACC", appinfo->hwacc, 1);
 	if (appinfo->taskmanage)
 		setenv("TASKMANAGE", appinfo->taskmanage, 1);
+	if (appinfo->root_path)
+		setenv("AUL_ROOT_PATH", appinfo->root_path, 1);
 
 	str = bundle_get_val(kb, AUL_K_WAYLAND_DISPLAY);
 	if (str)
