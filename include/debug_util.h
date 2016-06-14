@@ -28,7 +28,6 @@ int _prepare_debug_tool(bundle *kb, const char *appid,
 		const char **str_arr, int len);
 void _change_file(const char *path);
 void _wait_for_valgrind_output(void);
-void _set_env(appinfo_t *app_info, bundle *kb);
 char **_create_argc_argv(bundle *kb, int *margc, const char *app_path);
 
 #endif /* __DEBUG_UTIL_H__ */
