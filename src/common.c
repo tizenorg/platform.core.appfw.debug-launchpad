@@ -526,6 +526,10 @@ void _set_env(appinfo_t *appinfo, bundle *kb)
 	if (str)
 		setenv("TIZEN_API_VERSION", str, 1);
 
+	str = bundle_get_val(kb, AUL_K_ROOT_PATH);
+	if (str)
+		setenv("AUL_ROOT_PATH", appinfo->root_path, 1);
+
 	libdir = __get_libdir(appinfo->app_path);
 	if (libdir) {
 		setenv("LD_LIBRARY_PATH", libdir, 1);
