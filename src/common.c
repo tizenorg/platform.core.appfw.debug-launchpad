@@ -28,6 +28,7 @@
 #include <sys/un.h>
 #include <errno.h>
 #include <dirent.h>
+#include <unistd.h>
 #include <bundle.h>
 #include <bundle_internal.h>
 #ifdef _APPFW_FEATURE_SOCKET_ACTIVATION
@@ -77,6 +78,7 @@ static int __create_server_socket(bool is_app)
 {
 	struct sockaddr_un saddr;
 	int fd;
+	int ret;
 
 	if (is_app)
 		fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -102,6 +104,25 @@ static int __create_server_socket(bool is_app)
 	if (is_app) {
 		snprintf(saddr.sun_path, sizeof(saddr.sun_path),
 				"%s/apps/%d/%d",
+				SOCKET_PATH, getuid(), getpid());
+		ret = mkdir(saddr.sun_path, 0700);
+		if (ret != 0) {
+			if (errno == EEXIST) {
+				if (access(saddr.sun_path, R_OK) != 0) {
+					_E("Failed to access %s directory - %d",
+							saddr.sun_path, errno);
+					close(fd);
+					return -1;
+				}
+			} else {
+				_E("Failed to create %s directory - %d",
+						saddr.sun_path, errno);
+				close(fd);
+				return -1;
+			}
+		}
+		snprintf(saddr.sun_path, sizeof(saddr.sun_path),
+				"%s/apps/%d/%d/.app-sock",
 				SOCKET_PATH, getuid(), getpid());
 	} else {
 		snprintf(saddr.sun_path, sizeof(saddr.sun_path),
@@ -797,5 +818,55 @@ void _prepare_listen_sock(void)
 
 	snprintf(buf, sizeof(buf), "%d", fd);
 	setenv("AUL_LISTEN_SOCK", buf, 1);
+}
+
+static int __delete_dir(const char *path)
+{
+	DIR *dp;
+	struct dirent dentry;
+	struct dirent *result = NULL;
+	char buf[PATH_MAX];
+	struct stat statbuf;
+	int ret;
+
+	if (path == NULL)
+		return -1;
+
+	dp = opendir(path);
+	if (dp == NULL)
+		return -1;
+
+	while (readdir_r(dp, &dentry, &result) == 0 && result) {
+		if (!strcmp(dentry.d_name, ".") || !strcmp(dentry.d_name, ".."))
+			continue;
+
+		snprintf(buf, sizeof(buf), "%s/%s", path, dentry.d_name);
+		ret = stat(buf, &statbuf);
+		if (ret == 0) {
+			if (S_ISDIR(statbuf.st_mode))
+				__delete_dir(buf);
+			else
+				unlink(buf);
+		}
+	}
+
+	rmdir(path);
+	closedir(dp);
+
+	return 0;
+}
+
+int _delete_sock_path(int pid, uid_t uid)
+{
+	char path[PATH_MAX];
+
+	snprintf(path, sizeof(path), "/run/aul/apps/%d/%d", uid, pid);
+	if (access(path, F_OK) == 0)
+		__delete_dir(path);
+
+	if (access(path, F_OK) == 0)
+		return -1;
+
+	return 0;
 }
 

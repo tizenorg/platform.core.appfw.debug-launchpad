@@ -15,6 +15,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <sys/smack.h>
 #include <sys/types.h>
@@ -55,9 +56,7 @@ static void __socket_garbage_collector(void)
 
 		snprintf(path, sizeof(path), "/proc/%s", dentry->d_name);
 		if (access(path, F_OK) != 0) { /* Flawfinder: ignore */
-			snprintf(path, sizeof(path), "%s/apps/%d/%s",
-					SOCKET_PATH, getuid(), dentry->d_name);
-			unlink(path);
+			_delete_sock_path(atoi(dentry->d_name), getuid());
 			continue;
 		}
 	}
@@ -146,9 +145,7 @@ static int __sigchild_action(pid_t dead_pid)
 
 	_send_app_dead_signal(dead_pid);
 
-	snprintf(buf, MAX_LOCAL_BUFSZ, "%s/apps/%d/%d",
-				SOCKET_PATH, getuid(), dead_pid);
-	unlink(buf);
+	_delete_sock_path(dead_pid, getuid());
 
 	__socket_garbage_collector();
 
