@@ -19,7 +19,7 @@ MESSAGE("Build type: ${CMAKE_BUILD_TYPE}")
 # Set required packages
 INCLUDE(FindPkgConfig)
 
-SET(pkgs_requires "dlog glib-2.0 gio-2.0 bundle vconf libsmack security-manager pkgmgr-info")
+SET(pkgs_requires "dlog glib-2.0 gio-2.0 bundle vconf security-manager")
 IF(_APPFW_FEATURE_SOCKET_ACTIVATION)
 	SET(pkgs_requires "${pkgs_requires} libsystemd-daemon")
 	ADD_DEFINITIONS("-D_APPFW_FEATURE_SOCKET_ACTIVATION")
@@ -55,9 +55,7 @@ SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 # debug_launchpad_preloading_preinitializing_daemon
 SET(DEBUG_LAUNCHPAD "debug_launchpad_preloading_preinitializing_daemon")
 add_executable(${DEBUG_LAUNCHPAD}
-	src/file_util.c
 	src/debug_util.c
-	src/security_util.c
 	src/signal_util.c
 	src/common.c
 	src/debug-launchpad.c

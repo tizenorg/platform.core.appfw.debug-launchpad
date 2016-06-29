@@ -33,11 +33,10 @@
 #include <dlog.h>
 #include <bundle.h>
 #include <bundle_internal.h>
+#include <security-manager.h>
 
 #include "common.h"
 #include "signal_util.h"
-#include "security_util.h"
-#include "file_util.h"
 #include "debug_util.h"
 #include "perf.h"
 #include "defs.h"
@@ -104,8 +103,8 @@ static int __prepare_exec(const char *appid, const char *app_path,
 	/* SET PRIVILEGES */
 	_D("appid: %s / pkg_type: %s / app_path: %s",
 			appid, appinfo->pkg_type, app_path);
-	ret = _set_access(appid);
-	if (ret != 0) {
+	ret = security_manager_prepare_app(appid);
+	if (ret != SECURITY_MANAGER_SUCCESS) {
 		_E("Failed to set privileges "
 				"- check your package's credential: %d", ret);
 		return -1;
@@ -159,58 +158,6 @@ static int __prepare_fork(bundle *kb, const char *appid)
 	_prepare_debug_tool(kb, appid, str_array, len);
 
 	return 0;
-}
-
-static int __get_caller_pid(bundle *kb)
-{
-	const char *str;
-	int pid;
-
-	str = bundle_get_val(kb, AUL_K_ORG_CALLER_PID);
-	if (str)
-		goto end;
-
-	str = bundle_get_val(kb, AUL_K_CALLER_PID);
-	if (str == NULL)
-		return -1;
-
-end:
-	pid = atoi(str);
-	if (pid <= 1)
-		return -1;
-
-	return pid;
-}
-
-static int __redirect_stdfds(int caller_pid)
-{
-	char buf[PATH_MAX];
-	int fd;
-	int ret = 0;
-
-	/* stdout */
-	snprintf(buf, sizeof(buf), "/proc/%d/fd/1", caller_pid);
-	fd = open(buf, O_WRONLY);
-	if (fd < 0) {
-		_E("Failed to open caller(%d) stdout", caller_pid);
-		ret = 1;
-	} else {
-		dup2(fd, 1);
-		close(fd);
-	}
-
-	/* stderr */
-	snprintf(buf, sizeof(buf), "/proc/%d/fd/2", caller_pid);
-	fd = open(buf, O_WRONLY);
-	if (fd < 0) {
-		_E("Failed to open caller(%d) stderr", caller_pid);
-		ret += 2;
-	} else {
-		dup2(fd, 2);
-		close(fd);
-	}
-
-	return ret;
 }
 
 static int __normal_fork_exec(int argc, char **argv)
@@ -274,9 +221,6 @@ static int __start_process(const char *appid, const char *app_path,
 		snprintf(sock_path, sizeof(sock_path), "%s/apps/%d/%d",
 				SOCKET_PATH, getuid(), getpid());
 		unlink(sock_path);
-
-		if (__redirect_stdfds(__get_caller_pid(kb)))
-			_E("Failed to redirect caller fds");
 
 		PERF("prepare exec - fisrt done");
 		_D("lock up test log(no error): prepare exec - first done");
