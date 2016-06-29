@@ -75,7 +75,7 @@ rm -rf %{buildroot}
 %files
 %license LICENSE
 %manifest debug-launchpad.manifest
-%caps(cap_mac_admin,cap_mac_override,cap_setgid=ei) %{_bindir}/debug_launchpad_preloading_preinitializing_daemon
+%caps(cap_mac_admin,cap_setgid=ei) %{_bindir}/debug_launchpad_preloading_preinitializing_daemon
 %if 0%{?appfw_feature_socket_activation}
 %{_unitdir_user}/debug-launchpad.service
 %{_unitdir_user}/debug-launchpad.socket
