@@ -21,8 +21,6 @@ BuildRequires:  pkgconfig(gio-2.0)
 BuildRequires:  pkgconfig(bundle)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(vconf)
-BuildRequires:  pkgconfig(libsmack)
-BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(security-manager)
 
 %if "%{?profile}" == "wearable"

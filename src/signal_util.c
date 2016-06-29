@@ -17,7 +17,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <sys/smack.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/signalfd.h>
@@ -27,7 +26,6 @@
 
 #include "defs.h"
 #include "common.h"
-#include "file_util.h"
 #include "debug_util.h"
 #include "signal_util.h"
 
@@ -130,18 +128,12 @@ int _send_app_launch_signal(int launch_pid, const char *app_id)
 
 static int __sigchild_action(pid_t dead_pid)
 {
-	char buf[MAX_LOCAL_BUFSZ];
-
 	if (dead_pid <= 0)
 		return -1;
 
 	/* send app pid instead of gdbserver pid */
 	if (dead_pid == _get_gdbserver_pid())
 		dead_pid = _get_gdbserver_app_pid();
-
-	/* valgrind xml file */
-	if (access(PATH_VALGRIND_XMLFILE, F_OK) == 0)
-		_change_file(PATH_VALGRIND_XMLFILE);
 
 	_send_app_dead_signal(dead_pid);
 

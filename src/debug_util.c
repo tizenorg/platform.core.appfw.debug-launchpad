@@ -17,18 +17,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include <pkgmgr-info.h>
 #include <bundle.h>
 #include <bundle_internal.h>
 
 #include "defs.h"
 #include "common.h"
-#include "file_util.h"
-#include "security_util.h"
 #include "debug_util.h"
-
-#define LABEL_SDBD "sdbd"
-#define LABEL_NETWORK "system::debugging_network"
 
 #define POLL_VALGRIND_LOGFILE 0x00000001
 #define POLL_VALGRIND_XMLFILE 0x00000002
@@ -59,66 +53,13 @@ int _get_valgrind_option(void)
 	return valgrind_option;
 }
 
-static int __check_pkginfo(const char *appid)
-{
-	int r;
-	bool preload = false;
-	char *storeclientid = NULL;
-	pkgmgrinfo_pkginfo_h handle;
-
-	r = pkgmgrinfo_pkginfo_get_usr_pkginfo(appid, getuid(), &handle);
-	if (r != PMINFO_R_OK) {
-		_E("Failed to get pkginfo: %s", appid);
-		return -1;
-	}
-
-	r = pkgmgrinfo_pkginfo_is_preload(handle, &preload);
-	if (r != PMINFO_R_OK) {
-		_E("Faield to check preload: %s", appid);
-		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-		return -1;
-	}
-
-	r = pkgmgrinfo_pkginfo_get_storeclientid(handle, &storeclientid);
-	if (r != PMINFO_R_OK) {
-		_E("Failed to get store client id: %s", appid);
-		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-		return -1;
-	}
-
-	if (preload == true || (storeclientid && storeclientid[0] != '\0')) {
-		_E("Debugging is not allowed");
-		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-		return -1;
-	}
-
-	r = pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-	if (r != PMINFO_R_OK) {
-		_E("Failed to destroy pkginfo: %s", appid);
-		pkgmgrinfo_pkginfo_destroy_pkginfo(handle);
-	}
-
-	return 0;
-}
-
 static int __prepare_gdbserver(bundle *kb, const char *appid)
 {
-	int r;
 	const char *path;
-
-	r = __check_pkginfo(appid);
-	if (r < 0)
-		return -1;
 
 	path = bundle_get_val(kb, DLP_K_GDBSERVER_PATH);
 	if (path == NULL)
 		return -1;
-
-	r = dlp_chmod(path, S_IRUSR | S_IWUSR
-			| S_IXUSR | S_IRGRP | S_IXGRP
-			| S_IROTH | S_IXOTH, 1);
-	if (r != 0)
-		_W("Failed to set 755: %s", path);
 
 	gdbserver = true;
 
@@ -209,44 +150,24 @@ int _prepare_debug_tool(bundle *kb, const char *appid,
 	return 0;
 }
 
-/* chmod and chsmack to read file without root privilege */
-void _change_file(const char *path)
-{
-	int r;
-
-	r = dlp_chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0);
-	if (r)
-		_E("Failed to set 644: %s", path);
-
-	r = _set_smack_access_label(path, "*");
-	if (r)
-		_E("Failed to set smack label %s *", path);
-}
-
 void _wait_for_valgrind_output(void)
 {
 	int wait_count = 1;
 
 	do {
 		if (valgrind_option & POLL_VALGRIND_LOGFILE) {
-			if (access(PATH_VALGRIND_LOGFILE, F_OK) == 0) {
-				_change_file(PATH_VALGRIND_LOGFILE);
+			if (access(PATH_VALGRIND_LOGFILE, F_OK) == 0)
 				valgrind_option &= ~POLL_VALGRIND_LOGFILE;
-			}
 		}
 
 		if (valgrind_option & POLL_VALGRIND_XMLFILE) {
-			if (access(PATH_VALGRIND_XMLFILE, F_OK) == 0) {
-				_change_file(PATH_VALGRIND_XMLFILE);
+			if (access(PATH_VALGRIND_XMLFILE, F_OK) == 0)
 				valgrind_option &= ~POLL_VALGRIND_XMLFILE;
-			}
 		}
 
 		if (valgrind_option & POLL_VALGRIND_MASSIFFILE) {
-			if (access(PATH_VALGRIND_MASSIFFILE, F_OK) == 0) {
-				_change_file(PATH_VALGRIND_MASSIFFILE);
+			if (access(PATH_VALGRIND_MASSIFFILE, F_OK) == 0)
 				valgrind_option &= ~POLL_VALGRIND_MASSIFFILE;
-			}
 		}
 
 		usleep(50 * 1000); /* 50ms */
