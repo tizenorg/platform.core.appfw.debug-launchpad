@@ -545,6 +545,8 @@ void _set_env(appinfo_t *appinfo, bundle *kb)
 		setenv("HWACC", appinfo->hwacc, 1);
 	if (appinfo->taskmanage)
 		setenv("TASKMANAGE", appinfo->taskmanage, 1);
+	if (appinfo->appid)
+		setenv("AUL_APPID", appinfo->appid, 1);
 
 	str = bundle_get_val(kb, AUL_K_WAYLAND_DISPLAY);
 	if (str)
