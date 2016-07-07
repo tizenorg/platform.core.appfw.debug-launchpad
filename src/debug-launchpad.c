@@ -200,8 +200,6 @@ static int __start_process(const char *appid, const char *app_path,
 {
 	char sock_path[PATH_MAX];
 	int pid;
-	int max_fd;
-	int iter_fd;
 
 	if (__prepare_fork(kb, appinfo->debug_appid) < 0)
 		return -1;
@@ -214,13 +212,8 @@ static int __start_process(const char *appid, const char *app_path,
 		_signal_unblock_sigchld();
 		_signal_fini();
 
-		max_fd = sysconf(_SC_OPEN_MAX);
-		for (iter_fd = 3; iter_fd <= max_fd; iter_fd++)
-			close(iter_fd);
-
-		snprintf(sock_path, sizeof(sock_path), "%s/apps/%d/%d",
-				SOCKET_PATH, getuid(), getpid());
-		unlink(sock_path);
+		_close_all_fds();
+		_delete_sock_path(getpid(), getuid());
 
 		PERF("prepare exec - fisrt done");
 		_D("lock up test log(no error): prepare exec - first done");
