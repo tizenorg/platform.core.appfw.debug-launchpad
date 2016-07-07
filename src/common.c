@@ -309,6 +309,9 @@ appinfo_t *_appinfo_create(bundle *kb)
 	ptr = bundle_get_val(kb, AUL_K_COMP_TYPE);
 	if (ptr)
 		appinfo->comp_type = strdup(ptr);
+	ptr = bundle_get_val(kb, AUL_K_PKGID);
+	if (ptr)
+		appinfo->pkgid = strdup(ptr);
 	ptr = bundle_get_val(kb, AUL_K_EXEC);
 	if (ptr)
 		appinfo->app_path = strdup(ptr);
@@ -344,6 +347,8 @@ void _appinfo_free(appinfo_t *appinfo)
 		free(appinfo->debug_appid);
 	if (appinfo->comp_type)
 		free(appinfo->comp_type);
+	if (appinfo->pkgid)
+		free(appinfo->pkgid);
 
 	free(appinfo);
 }
@@ -545,6 +550,10 @@ void _set_env(appinfo_t *appinfo, bundle *kb)
 		setenv("HWACC", appinfo->hwacc, 1);
 	if (appinfo->taskmanage)
 		setenv("TASKMANAGE", appinfo->taskmanage, 1);
+	if (appinfo->appid)
+		setenv("AUL_APPID", appinfo->appid, 1);
+	if (appinfo->pkgid)
+		setenv("AUL_PKGID", appinfo->pkgid, 1);
 
 	str = bundle_get_val(kb, AUL_K_WAYLAND_DISPLAY);
 	if (str)

@@ -56,6 +56,7 @@ typedef struct {
 	char *hwacc;
 	char *taskmanage;
 	char *comp_type;
+	char *pkgid;
 } appinfo_t;
 
 struct ucred;
