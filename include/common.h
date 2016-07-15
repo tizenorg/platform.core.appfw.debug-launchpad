@@ -72,6 +72,7 @@ int _proc_check_cmdline_bypid(int pid);
 void _prepare_listen_sock(void);
 int _delete_sock_path(int pid, uid_t uid);
 int _close_all_fds(void);
+int _set_extra_data(const char *extra_data);
 
 #endif /* __COMMON_H__ */
 
