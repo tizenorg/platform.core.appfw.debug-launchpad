@@ -185,17 +185,28 @@ static int __normal_fork_exec(int argc, char **argv)
 
 static void __real_launch(const char *app_path, bundle *kb)
 {
-	int app_argc;
+	int app_argc = 0;
 	char **app_argv;
+	char *extra_data = NULL;
+	int len;
+	int r;
 	int i;
+
+	r = bundle_encode(kb, (bundle_raw **)&extra_data, &len);
+	if (r != BUNDLE_ERROR_NONE)
+		exit(-1);
+
+	_set_extra_data(extra_data);
+	free(extra_data);
 
 	app_argv = _create_argc_argv(kb, &app_argc, app_path);
 	if (app_argv == NULL)
-		return;
+		exit(-1);
 
 	for (i = 0; i < app_argc; i++)
 		_D("input argument %d : %s##", i, app_argv[i]);
 
+	free(kb);
 	PERF("setup argument done");
 
 	__normal_fork_exec(app_argc, app_argv);
@@ -204,7 +215,6 @@ static void __real_launch(const char *app_path, bundle *kb)
 static int __start_process(const char *appid, const char *app_path,
 		bundle *kb, appinfo_t *appinfo)
 {
-	char sock_path[PATH_MAX];
 	int pid;
 
 	if (__prepare_fork(kb, appinfo->debug_appid) < 0)
