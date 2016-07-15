@@ -591,7 +591,7 @@ void _set_env(appinfo_t *appinfo, bundle *kb)
 		__set_sdk_env(appinfo->appid, str_array[i]);
 }
 
-static char **__add_arg(bundle *kb, char **argv, int *margc, const char *key)
+static char **__add_arg(bundle *kb, int *margc, const char *key)
 {
 	const char *str = NULL;
 	const char **str_array = NULL;
@@ -610,69 +610,23 @@ static char **__add_arg(bundle *kb, char **argv, int *margc, const char *key)
 	}
 
 	if (str_array) {
-		if (strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0
-			|| strncmp(key, DLP_K_VALGRIND_ARG, strlen(key)) == 0) {
-			new_argv = (char **)realloc(argv,
-					sizeof(char *) * (*margc + len + 2));
+		if (strcmp(key, DLP_K_DEBUG_ARG) == 0
+			|| strcmp(key, DLP_K_VALGRIND_ARG) == 0
+			|| strcmp(key, DLP_K_ATTACH_ARG) == 0) {
+			new_argv = (char **)calloc(1,
+					sizeof(char *) * (len +	2));
 			if (new_argv == NULL) {
-				_E("Failed to realloc (key: %s)", key);
-				exit(-1);
+				_E("Failed to allocate (key: %s)", key);
+				return NULL;
 			}
-
-			for (i = *margc + len + 1; i - (len + 1) >= 0; i--)
-				new_argv[i] = new_argv[i - (len + 1)];
 
 			/* need to add new_argv[0] */
 			for (i = 0; i < len; i++)
 				new_argv[1 + i] = strdup(str_array[i]);
 
-			len++; /* gdbserver or valgrind */
-		} else if (strncmp(key, DLP_K_ATTACH_ARG, strlen(key)) == 0) {
-			new_argv = (char **)malloc((len + 2) * sizeof(char *));
-			if (new_argv == NULL) {
-				_E("Failed to malloc (key: %s)", key);
-				exit(-1);
-			}
-
-			for (i = 0; i < len; i++)
-				new_argv[1 + i] = strdup(str_array[i]);
-
-			*margc = 0;
-			len = len + 1;
-		} else {
-			new_argv = (char **)realloc(argv,
-					sizeof(char *) * (*margc + len + 1));
-			if (new_argv == NULL) {
-				_E("Failed to realloc (key: %s)", key);
-				exit(-1);
-			}
-
-			for (i = 0; i < len; i++)
-				new_argv[*margc + i] = strdup(str_array[i]);
-		}
-
-		new_argv[*margc + len] = NULL;
-		*margc += len;
-	} else {
-		if (strncmp(key, DLP_K_DEBUG_ARG, strlen(key)) == 0
-			|| strncmp(key, DLP_K_VALGRIND_ARG, strlen(key)) == 0) {
-			new_argv = (char **)realloc(argv,
-					sizeof(char *) * (*margc + 2));
-			if (new_argv == NULL) {
-				_E("Failed to realloc (key: %s)", key);
-				exit(-1);
-			}
-
-			for (i = *margc + 1; i - 1 >= 0; i--)
-				new_argv[i] = new_argv[i - 1];
-
-			/* need to add new_argv[0] */
-			(*margc)++;
+			*margc = len + 1;
 		}
 	}
-
-	if (new_argv == NULL)
-		return argv;
 
 	return new_argv;
 }
@@ -683,19 +637,11 @@ char **_create_argc_argv(bundle *kb, int *margc, const char *app_path)
 	char **new_argv = NULL;
 	int argc;
 	int i;
-	char buf[MAX_LOCAL_BUFSZ];
+	char buf[PATH_MAX];
 	const char *str;
 	const char **str_array = NULL;
 	int len = 0;
 	const char *path;
-
-	argc = bundle_export_to_argv(kb, &argv);
-	if (argv) {
-		argv[0] = strdup(app_path);
-	} else {
-		_E("bundle_export_to_argv() is failed.");
-		return NULL;
-	}
 
 	if (bundle_get_type(kb, AUL_K_SDK) & BUNDLE_TYPE_ARRAY) {
 		str_array = bundle_get_str_array(kb, AUL_K_SDK, &len);
@@ -711,8 +657,7 @@ char **_create_argc_argv(bundle *kb, int *margc, const char *app_path)
 		if (str_array[i] == NULL)
 			break;
 
-		if (strncmp(str_array[i], SDK_DEBUG,
-					strlen(str_array[i])) == 0) {
+		if (strcmp(str_array[i], SDK_DEBUG) == 0) {
 			if (argv[0])
 				free(argv[0]);
 			snprintf(buf, sizeof(buf), "%s.exe", app_path);
@@ -726,50 +671,48 @@ char **_create_argc_argv(bundle *kb, int *margc, const char *app_path)
 			path = bundle_get_val(kb, DLP_K_GDBSERVER_PATH);
 			if (path == NULL) {
 				_E("Failed to get gdbserver path");
-				if (argv[0])
-					free(argv[0]);
-				bundle_free_exported_argv(argc, &argv);
 				*margc = 0;
 				return NULL;
 			}
-			new_argv = __add_arg(kb, argv, &argc, DLP_K_DEBUG_ARG);
-			new_argv[0] = strdup(path);
+			new_argv = __add_arg(kb, &argc, DLP_K_DEBUG_ARG);
+			if (new_argv)
+				new_argv[0] = strdup(path);
 			argv = new_argv;
-		} else if (strncmp(str_array[i], SDK_VALGRIND,
-					strlen(str_array[i])) == 0) {
+		} else if (strcmp(str_array[i], SDK_VALGRIND) == 0) {
 			path = bundle_get_val(kb, DLP_K_VALGRIND_PATH);
 			if (path == NULL) {
 				_E("Failed to get valgrind path");
-				if (argv[0])
-					free(argv[0]);
-				bundle_free_exported_argv(argc, &argv);
 				*margc = 0;
 				return NULL;
 			}
-			new_argv = __add_arg(kb, argv, &argc,
-					DLP_K_VALGRIND_ARG);
-			new_argv[0] = strdup(path);
+			new_argv = __add_arg(kb, &argc, DLP_K_VALGRIND_ARG);
+			if (new_argv)
+				new_argv[0] = strdup(path);
 			argv = new_argv;
-		} else if (strncmp(str_array[i], SDK_UNIT_TEST,
-					strlen(str_array[i])) == 0) {
-			new_argv = __add_arg(kb, argv, &argc,
-					DLP_K_UNIT_TEST_ARG);
-			argv = new_argv;
-		} else if (strncmp(str_array[i], SDK_ATTACH,
-					strlen(str_array[i])) == 0) {
-			if (argv[0])
-				free(argv[0]);
-			bundle_free_exported_argv(argc, &argv);
-			*margc = 0;
+		} else if (strcmp(str_array[i], SDK_ATTACH) == 0) {
 			path = bundle_get_val(kb, DLP_K_GDBSERVER_PATH);
 			if (path == NULL) {
 				_E("Failed to get gdbserver path");
+				*margc = 0;
 				return NULL;
 			}
-			new_argv = __add_arg(kb, argv, &argc, DLP_K_ATTACH_ARG);
-			new_argv[0] = strdup(path);
+			new_argv = __add_arg(kb, &argc, DLP_K_ATTACH_ARG);
+			if (new_argv)
+				new_argv[0] = strdup(path);
 			argv = new_argv;
 		}
+	}
+
+	if (argv == NULL) {
+		argv = (char **)calloc(1, sizeof(char *) * 2);
+		if (argv == NULL) {
+			_E("out of memory");
+			return NULL;
+		}
+		argv[0] = strdup(app_path);
+		argc = 2;
+	} else {
+		argv[argc++] = strdup(app_path);
 	}
 
 	*margc = argc;
@@ -911,6 +854,56 @@ int _close_all_fds(void)
 		close(fd);
 	}
 	closedir(dp);
+
+	return 0;
+}
+
+int _set_extra_data(const char *extra_data)
+{
+	int pipe[2];
+	int r;
+	ssize_t ret;
+	ssize_t len;
+	char buf[12];
+	unsigned int datalen;
+
+	if (extra_data == NULL) {
+		_E("Invalid parameter");
+		return -1;
+	}
+
+	_D("extra_data: %s", extra_data);
+
+	r = pipe2(pipe, O_NONBLOCK);
+	if (r != 0) {
+		_E("Failed to create pipe");
+		return -1;
+	}
+
+	datalen = strlen(extra_data);
+	ret = write(pipe[1], &datalen, sizeof(datalen));
+	if (ret < 0) {
+		_E("Failed to write datalen");
+		close(pipe[1]);
+		close(pipe[0]);
+		return -1;
+	}
+
+	len = 0;
+	while (len < datalen) {
+		ret = write(pipe[1], extra_data, datalen - len);
+		if (ret < 0) {
+			_E("Failed to write %s", extra_data);
+			close(pipe[1]);
+			close(pipe[0]);
+			return -1;
+		}
+		len += ret;
+	}
+	close(pipe[1]);
+
+	snprintf(buf, sizeof(buf), "%d", pipe[0]);
+	setenv("AUL_EXTRA_DATA_FD", buf, 1);
 
 	return 0;
 }
