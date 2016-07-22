@@ -22,20 +22,9 @@ BuildRequires:  pkgconfig(bundle)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(security-manager)
+BuildRequires:  pkgconfig(libsystemd-daemon)
 
-%if "%{?profile}" == "wearable"
-BuildRequires:  pkgconfig(libsystemd-daemon)
 %define appfw_feature_socket_activation 1
-%else
-%if "%{?profile}" == "mobile"
-BuildRequires:  pkgconfig(libsystemd-daemon)
-%define appfw_feature_socket_activation 1
-%else
-%if "%{?profile}" == "tv"
-%define appfw_feature_socket_activation 0
-%endif
-%endif
-%endif
 
 %description
 Debug launchpad
