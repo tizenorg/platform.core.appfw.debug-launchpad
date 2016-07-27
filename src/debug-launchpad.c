@@ -166,6 +166,56 @@ static int __prepare_fork(bundle *kb, const char *appid)
 	return 0;
 }
 
+static int __stdout_stderr_redirection(int caller_pid)
+{
+	char path[PATH_MAX];
+	int fd;
+	int ret = 0;
+
+	/* stdout */
+	snprintf(path, sizeof(path), "/proc/%d/fd/1", caller_pid);
+	fd = open(path, O_WRONLY);
+	if (fd < 0) {
+		_E("Failed to open %s [%s]", path, strerror(errno));
+		ret++;
+	} else {
+		dup2(fd, 1);
+		close(fd);
+	}
+
+	/* stderr */
+	snprintf(path, sizeof(path), "/proc/%d/fd/2", caller_pid);
+	fd = open(path, O_WRONLY);
+	if (fd < 0) {
+		_E("Failed to open %s [%s]", path, strerror(errno));
+		ret += 2;
+	} else {
+		dup2(fd, 2);
+		close(fd);
+	}
+
+	return ret;
+}
+
+static int __get_caller_pid(bundle *kb)
+{
+	const char *pid_str;
+	int pid;
+
+	pid_str = bundle_get_val(kb, AUL_K_ORG_CALLER_PID);
+	if (pid_str == NULL)
+		pid_str = bundle_get_val(kb, AUL_K_CALLER_PID);
+
+	if (pid_str == NULL)
+		return -1;
+
+	pid = atoi(pid_str);
+	if (pid <= 1)
+		return -1;
+
+	return pid;
+}
+
 static int __normal_fork_exec(int argc, char **argv)
 {
 	_D("start real fork and exec\n");
@@ -204,7 +254,6 @@ static void __real_launch(const char *app_path, bundle *kb)
 static int __start_process(const char *appid, const char *app_path,
 		bundle *kb, appinfo_t *appinfo)
 {
-	char sock_path[PATH_MAX];
 	int pid;
 
 	if (__prepare_fork(kb, appinfo->debug_appid) < 0)
@@ -220,6 +269,9 @@ static int __start_process(const char *appid, const char *app_path,
 
 		_close_all_fds();
 		_delete_sock_path(getpid(), getuid());
+
+		if (__stdout_stderr_redirection(__get_caller_pid(kb)))
+			_E("__stdout_stderr_redirection() failed");
 
 		PERF("prepare exec - fisrt done");
 		_D("lock up test log(no error): prepare exec - first done");
