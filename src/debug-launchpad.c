@@ -63,6 +63,8 @@ static int __real_send(int clifd, int ret)
 static void __send_result_to_caller(int clifd, int ret)
 {
 	int res;
+	int count = 0;
+	char path[PATH_MAX];
 
 	_W("Check app launching");
 
@@ -74,6 +76,20 @@ static void __send_result_to_caller(int clifd, int ret)
 		__real_send(clifd, ret);
 		return;
 	}
+
+	snprintf(path, sizeof(path), "/run/aul/apps/%d/%d/.app-sock",
+			getuid(), ret);
+	_D("socket path: %s", path);
+	do {
+		if (access(path, F_OK) == 0) {
+			_D("%s exists", path);
+			break;
+		}
+
+		_D("-- now wait socket creation --");
+		usleep(50 * 1000);
+		count++;
+	} while (count < 20);
 
 	res = _proc_check_cmdline_bypid(ret);
 	if (res < 0) {
@@ -264,14 +280,14 @@ static int __start_process(const char *appid, const char *app_path,
 		PERF("fork done");
 		_D("lock up test log(no error): fork done");
 
+		if (__stdout_stderr_redirection(__get_caller_pid(kb)))
+			_E("__stdout_stderr_redirection() failed");
+
 		_signal_unblock_sigchld();
 		_signal_fini();
 
 		_close_all_fds();
 		_delete_sock_path(getpid(), getuid());
-
-		if (__stdout_stderr_redirection(__get_caller_pid(kb)))
-			_E("__stdout_stderr_redirection() failed");
 
 		PERF("prepare exec - fisrt done");
 		_D("lock up test log(no error): prepare exec - first done");
