@@ -498,6 +498,9 @@ static char *__get_libdir(const char *path)
 		return NULL;
 
 	ptr = strrchr(path_dup, '/');
+	if (ptr == NULL)
+		return NULL;
+
 	*ptr = '\0';
 
 	snprintf(buf, sizeof(buf), "%s/../lib/", path_dup);
